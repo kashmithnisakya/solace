@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solace</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --surface: #ffffff; --text: #22252a; --muted: #6b6f76;
+    --accent: #3f6f68; --user: #e3ece9; --border: #e2ded6; --alert: #8a3b2e; --alert-bg: #fbeeea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181b; --surface: #1f2226; --text: #e8e6e1; --muted: #9a9ea5;
+      --accent: #7fb3aa; --user: #2a3634; --border: #2e3237; --alert: #f2a594; --alert-bg: #3a2420;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .app { max-width: 720px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 0 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 1.25rem; margin: 0; color: var(--accent); letter-spacing: .02em; }
+  select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .notice { font-size: .85rem; color: var(--muted); padding: 10px 0; }
+  #log { flex: 1; overflow-y: auto; padding: 8px 0 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; }
+  .bot { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; }
+  .me { background: var(--user); align-self: flex-end; }
+  .help { background: var(--alert-bg); color: var(--alert); border-radius: 12px; padding: 12px 14px; font-size: .92rem; }
+  .help strong { display: block; margin-bottom: 4px; }
+  .help ul { margin: 0; padding-left: 18px; }
+  form { display: flex; gap: 8px; padding: 12px 0 20px; position: sticky; bottom: 0; background: var(--bg); }
+  textarea { flex: 1; font: inherit; resize: none; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-height: 46px; }
+  button { font: inherit; border: 0; border-radius: 12px; padding: 0 18px; background: var(--accent); color: #fff; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .typing { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Solace</h1>
+    <label>Include faith:
+      <select id="faith" aria-label="Include faith in the conversation">
+        <option value="">None</option>
+        <option value="buddhism">Buddhism</option>
+        <option value="hinduism">Hinduism</option>
+        <option value="islam">Islam</option>
+        <option value="christianity">Christianity</option>
+      </select>
+    </label>
+  </header>
+  <p class="notice">Solace is an AI companion, not a therapist or doctor. If you are in danger, call
+    <strong>1926</strong> (Sri Lanka, 24/7) or your local emergency number.</p>
+  <div id="log" aria-live="polite">
+    <div class="msg bot">Hi, I'm Solace. I'm here to listen. How are you feeling today?</div>
+  </div>
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="Type how you feel…" aria-label="Message" required></textarea>
+    <button id="send">Send</button>
+  </form>
+</div>
+<script>
+  const log = document.getElementById("log");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+  let sessionId = null;
+  let shownHelp = false;
+
+  function add(cls, text) {
+    const el = document.createElement("div");
+    el.className = cls;
+    el.textContent = text;
+    log.appendChild(el);
+    el.scrollIntoView({ behavior: "smooth", block: "end" });
+    return el;
+  }
+
+  function addHelp(resources) {
+    const box = document.createElement("div");
+    box.className = "help";
+    const title = document.createElement("strong");
+    title.textContent = "You don't have to go through this alone. Free, confidential support:";
+    const list = document.createElement("ul");
+    for (const r of resources) {
+      const li = document.createElement("li");
+      li.textContent = `${r.name}: ${r.contact}${r.hours ? " (" + r.hours + ")" : ""}`;
+      list.appendChild(li);
+    }
+    box.append(title, list);
+    log.appendChild(box);
+    box.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = input.value.trim();
+    if (!message) return;
+    add("msg me", message);
+    input.value = "";
+    send.disabled = true;
+    const typing = add("msg bot typing", "…");
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, session_id: sessionId, faith: document.getElementById("faith").value || null }),
+      });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      sessionId = data.session_id;
+      typing.remove();
+      add("msg bot", data.reply);
+      const crisis = data.risk_level === "high" || data.risk_level === "imminent";
+      if (data.resources.length && (crisis || !shownHelp)) { addHelp(data.resources); shownHelp = true; }
+    } catch {
+      typing.remove();
+      add("msg bot", "Sorry, I couldn't connect. If you need urgent help, please call 1926 or your local emergency number.");
+    } finally {
+      send.disabled = false;
+      input.focus();
+    }
+  });
+</script>
+</body>
+</html>

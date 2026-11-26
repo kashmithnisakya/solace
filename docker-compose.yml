@@ -1,0 +1,11 @@
+services:
+  solace:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - solace-data:/app/data
+
+volumes:
+  solace-data:
