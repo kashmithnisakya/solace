@@ -77,12 +77,36 @@ about {gap}. Skip it if they are in the middle of sharing something painful. Nev
 """
 
 
+KNOWLEDGE = """
+# Notes you can draw on (only if they genuinely help right now)
+Trusted background for this message. If the person mainly needs to be heard, ignore these and just listen.
+If you use an idea, put it in your own words, briefly and warmly, like a friend who happens to know this,
+never as a lecture or a list. Offer at most one idea per reply. Never mention "notes" or "the knowledge base".
+{cite}
+{notes}
+"""
+
+CITE_TEXT = (
+    "When a sentence uses a note, end that sentence with the note's marker, like [1]. "
+    "Only use markers of the notes below, and only when you really used them."
+)
+CITE_SPOKEN = "Don't say marker numbers. Only name where an idea comes from if they ask."
+
+
+def knowledge_section(c: UserContext) -> str:
+    if not c.knowledge:
+        return ""
+    notes = "\n".join(f"[{p.n}] {p.title}, {p.section} ({p.source}): {p.text}" for p in c.knowledge)
+    return KNOWLEDGE.format(cite=CITE_SPOKEN if c.spoken else CITE_TEXT, notes=notes)
+
+
 def companion_instructions(ctx: RunContextWrapper[UserContext], agent: Agent) -> str:
     c = ctx.context
     text = BASE + (FAITH.format(faith=c.faith) if c.faith else NO_FAITH)
     text += UNDERSTANDING.format(summary=c.graph_summary)
     if c.next_gap:
         text += GAP.format(gap=c.next_gap)
+    text += knowledge_section(c)
     if c.resources:
         text += "\n# Support lines (only if the person asks for help options)\n" + c.resources_text()
     return text

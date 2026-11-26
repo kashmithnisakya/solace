@@ -26,6 +26,7 @@ from solace.assistants.crisis import build_crisis_agent, fallback_crisis_message
 from solace.assistants.graph_builder import build_graph_builder, builder_input
 from solace.config import Settings
 from solace.graph import GraphStore, GraphUpdate, IssueGraph
+from solace.knowledge import KnowledgeBase, Passage, Source, clean_markers, openai_embedder, strip_citations
 from solace.safety import Resource, RiskAssessment, RiskLevel, combine, keyword_screen, resources_for
 from solace.voice import voice_instructions
 
@@ -54,6 +55,7 @@ class TurnInfo(BaseModel):
 class Reply(TurnInfo):
     reply: str
     graph: IssueGraph
+    sources: list[Source] = []  # knowledge base sources the reply actually cited
 
 
 class Message(BaseModel):
@@ -96,8 +98,15 @@ class Conversation:
         respond: Respond | None = None,
         build_graph: BuildGraph | None = None,
         stream_respond: StreamRespond | None = None,
+        knowledge: KnowledgeBase | None = None,
     ) -> None:
         self.settings = settings
+        self.knowledge = knowledge or KnowledgeBase(
+            openai_embedder(settings.openai_api_key, settings.solace_embedding_model),
+            db_path=settings.solace_db_path,
+            model=settings.solace_embedding_model,
+            min_score=settings.solace_knowledge_min_score,
+        )
         self.companion = build_companion(settings.solace_model)
         self.crisis = build_crisis_agent(settings.solace_model)
         helper_model = settings.solace_safety_model or settings.solace_model
@@ -136,7 +145,8 @@ class Conversation:
         info = turn.info()
         if text == GENERIC_ERROR:
             info.resources = turn.ctx.resources  # always offer real help when we can't
-        return Reply(**info.model_dump(), reply=text, graph=graph)
+        text, sources = strip_citations(text, turn.ctx.knowledge)
+        return Reply(**info.model_dump(), reply=text, graph=graph, sources=sources)
 
     async def stream(self, session_id: str, message: str, faith: str | None = None) -> AsyncIterator[dict]:
         """Yield events: {"type": "start", ...}, {"type": "delta", "text"}, {"type": "done", "graph"}."""
@@ -158,7 +168,9 @@ class Conversation:
                 yield {"type": "resources", "resources": [r.model_dump() for r in turn.ctx.resources]}
 
         graph = self._finish(turn, await graph_task)
-        yield {"type": "done", "graph": graph.model_dump(mode="json")}
+        # The client strips [n] markers and shows only the sources the reply cited.
+        sources = [_source(p).model_dump() for p in turn.ctx.knowledge]
+        yield {"type": "done", "graph": graph.model_dump(mode="json"), "sources": sources}
 
     async def history(self, session_id: str) -> list[Message]:
         """The visible messages of a conversation, for restoring the chat after a reload."""
@@ -166,6 +178,8 @@ class Conversation:
         for item in await self.session(session_id).get_items():
             text = _item_text(item)
             if text and item.get("role") in ("user", "assistant"):
+                if item["role"] == "assistant":
+                    text = clean_markers(text)
                 out.append(Message(role=item["role"], text=text))
         return out
 
@@ -187,6 +201,7 @@ class Conversation:
     async def voice_user(self, session_id: str, text: str, faith: str | None = None) -> VoiceTurn:
         """A finished user transcript: screen it, save it, and return the instructions to use next."""
         turn = await self._prepare(session_id, text, faith)
+        turn.ctx.spoken = True
         await turn.session.add_items([{"role": "user", "content": text}])
         task = asyncio.create_task(self._update_graph(turn))  # don't make a spoken reply wait for this
         self._background.add(task)
@@ -225,7 +240,8 @@ class Conversation:
         session = self.session(session_id)
         graph = self.graphs.load(session_id)
 
-        risk = await self.assess(session, message)
+        # Look up notes while the risk check runs, so it adds no waiting.
+        risk, notes = await asyncio.gather(self.assess(session, message), self._search(message, faith))
         previous = self._last_level.get(session_id, RiskLevel.NONE)
         self._last_level[session_id] = risk.level
         # Stay in crisis mode until the risk clearly drops, not just for one message.
@@ -235,6 +251,7 @@ class Conversation:
             log.info("risk=%s via %s", risk.level.name, risk.source)  # never log message content
 
         ctx = self._context(graph, in_crisis, faith)
+        ctx.knowledge = [] if in_crisis else notes  # crisis replies stay focused on safety
         return _Turn(session_id, message, session, agent, ctx, risk, in_crisis, graph)
 
     def _context(self, graph: IssueGraph, in_crisis: bool, faith: str | None) -> UserContext:
@@ -246,6 +263,13 @@ class Conversation:
             graph_summary=graph.summary(),
             next_gap=gap.hint if gap else None,
         )
+
+    async def _search(self, message: str, faith: str | None) -> list[Passage]:
+        try:
+            return await self.knowledge.search(message, faith=faith)
+        except Exception:
+            log.exception("knowledge search failed; replying without notes")
+            return []
 
     def _finish(self, turn: _Turn, update: GraphUpdate) -> IssueGraph:
         if update.nodes or update.edges or update.domains:
@@ -295,6 +319,10 @@ class Conversation:
         self, agent: Agent, message: str, ctx: UserContext, session: SQLiteSession
     ) -> AsyncIterator[str]:
         yield await self._respond(agent, message, ctx, session)
+
+
+def _source(p: Passage) -> Source:
+    return Source(n=p.n, title=p.title, source=p.source, url=p.url)
 
 
 def _item_text(item: Any) -> str:

@@ -143,6 +143,21 @@ h1 { font-size: 13px; font-weight: 600; margin: 0; letter-spacing: 0; }
   max-width: 420px; margin: 12px 0 4px;
 }
 
+/* Sources under a reply that drew on the knowledge base */
+.sources {
+  align-self: flex-start; max-width: min(78%, 560px);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 6px 0 2px 4px; font-size: 12px; animation: pop .32s var(--ease) both;
+}
+.sources-label { color: var(--label-2); font-weight: 500; }
+.source {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  padding: 3px 9px; border-radius: 999px; background: var(--fill); color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.source::after { content: "↗"; font-size: 10px; opacity: .7; }
+.source:active { opacity: .6; }
+
 /* Care card: shown when someone may need real help */
 .care {
   align-self: stretch; margin: 12px 0 4px;

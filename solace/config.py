@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     solace_voice_model: str = "gpt-realtime-2.1"
     solace_transcribe_model: str = "gpt-transcribe"
     solace_voice: str = "marin"
+    # Knowledge base search. Lower the score to use notes more often, raise it to be stricter.
+    solace_embedding_model: str = "text-embedding-3-large"
+    solace_knowledge_min_score: float = 0.24
 
 
 @lru_cache

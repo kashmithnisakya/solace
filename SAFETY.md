@@ -20,6 +20,7 @@ These rules apply to every change. A pull request that weakens them will not be 
 - [ ] Every crisis number in `solace/safety/hotlines.py` verified with the organisation
 - [ ] Prompts and the crisis flow reviewed by a licensed mental-health professional
 - [ ] Red-team evaluation of crisis conversations, including indirect and coded language
+- [ ] Every note in `solace/knowledge/library/` reviewed for accuracy and safety by a professional (and faith notes by someone from that tradition)
 - [ ] Human counselor hand-off in place
 - [ ] Voice tested with real speech: crisis detection from transcripts, numbers read out clearly, interruptions
 - [ ] Privacy review: consent, encryption at rest, data deletion, and Sri Lanka's Personal Data Protection Act (No. 9 of 2022)
