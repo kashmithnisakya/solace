@@ -10,6 +10,7 @@
 ## What it does
 
 - **Talks like a caring person, not a chatbot.** Replies stream in as they are written, match the person's tone and length, and remember the details they shared.
+- **Talk out loud in real time.** Tap the waveform button for a voice call, like a phone call with a friend. Speech goes straight between the browser and OpenAI over WebRTC, with live captions, mute, and a transcript saved to the chat.
 - **Feels like a native app.** A calm, Apple-style interface with light and dark mode, tap-to-call crisis lines, and a conversation that survives a page reload.
 - **Checks every message for suicide and self-harm risk.** There are two independent checks: a fast keyword screen and an AI screener. Either one can raise the alarm.
 - **Switches to crisis mode** when risk is high. It stays calm, asks about safety directly, and connects the person to crisis lines and real people. If the AI fails, a fixed safety message is sent instead, so a person in crisis never sees an error.
@@ -52,6 +53,8 @@ With Docker: `docker compose up --build`.
 | `GET` | `/api/sessions/{id}/graph` | The person's issue graph, coverage, and next area to explore |
 | `DELETE` | `/api/sessions/{id}` | Delete the conversation, graph and risk state |
 | `GET` | `/api/resources` | Crisis lines for the configured region |
+| `POST` | `/api/voice/session` | Start a voice call: returns a short-lived key for the browser's WebRTC connection |
+| `POST` | `/api/voice/turn` | Save a finished transcript; user speech is risk-screened and returns the instructions to use next |
 | `GET` | `/health` | Health check |
 
 ## How it works
@@ -66,12 +69,18 @@ message ─► keyword screen ─┐
 message ─► Graph Builder agent (in parallel) ─► issue graph (SQLite)
 ```
 
+Voice calls use the same rules. The browser streams audio directly to the OpenAI Realtime API (our server never
+relays audio and never shares the real API key). Each finished transcript of what the person said goes through the
+same risk checks. If risk becomes high, the browser stops the current spoken reply and Solace answers again in
+crisis mode, while the call screen shows tap-to-call buttons.
+
 Built with Python, [FastAPI](https://fastapi.tiangolo.com) and the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/).
 
 ```
 solace/
 ├── api.py              FastAPI app
-├── conversation.py     safety-first routing between agents
+├── conversation.py     safety-first routing between agents (text and voice)
+├── voice.py            Realtime voice: short-lived keys and spoken instructions
 ├── assessment.py       picks the next area worth gently asking about
 ├── graph/              issue graph models and storage
 ├── config.py           settings from .env
@@ -83,7 +92,7 @@ tests/                  unit tests, including crisis-phrase test cases
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a knowledge base (psychology, faith and health sources), real-time voice, a platform with human counselors, and Sinhala support.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a knowledge base (psychology, faith and health sources), a platform with human counselors, and Sinhala support.
 
 ## Development
 

@@ -5,7 +5,7 @@ These rules apply to every change. A pull request that weakens them will not be 
 
 ## Non-negotiable rules
 
-1. **Every message is risk-screened before any other agent sees it.** The keyword screen always runs, even when the AI is down.
+1. **Every message is risk-screened before any other agent sees it.** The keyword screen always runs, even when the AI is down. In voice calls, every finished transcript of the person's speech is screened the same way, and a high-risk result interrupts the current spoken reply and switches to crisis mode.
 2. **Detectors can only raise risk, never lower it.** The most severe assessment wins.
 3. **A person in crisis never sees an error.** If the AI fails during a crisis, a fixed message with crisis lines is sent.
 4. **Crisis lines are shown from moderate risk upward**, and always in crisis mode.
@@ -21,6 +21,7 @@ These rules apply to every change. A pull request that weakens them will not be 
 - [ ] Prompts and the crisis flow reviewed by a licensed mental-health professional
 - [ ] Red-team evaluation of crisis conversations, including indirect and coded language
 - [ ] Human counselor hand-off in place
+- [ ] Voice tested with real speech: crisis detection from transcripts, numbers read out clearly, interruptions
 - [ ] Privacy review: consent, encryption at rest, data deletion, and Sri Lanka's Personal Data Protection Act (No. 9 of 2022)
 
 ## Reporting a safety problem

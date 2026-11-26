@@ -30,6 +30,7 @@ Run tests and both ruff commands before every commit. CI runs the same checks.
 solace/
 ├── api.py               HTTP routes
 ├── conversation.py      per-message flow: risk screen → pick agent → reply + graph update
+├── voice.py             Realtime voice: short-lived keys, spoken instructions
 ├── assessment.py        picks the next life area worth gently asking about
 ├── assistants/          agent definitions and prompts (companion, crisis, classifier, graph_builder)
 ├── graph/               issue graph models and SQLite store
@@ -48,6 +49,8 @@ docs/ROADMAP.md          phases and status
 5. No diagnosis, no medication advice, faith content only when the person opted in.
 6. Changes to prompts or crisis flow need a test and should be flagged for professional review in the PR.
 7. When you find a risky phrase the keyword screen misses, add it to `tests/test_screen.py`.
+8. Voice follows the same rules: every user transcript goes through `/api/voice/turn` (`Conversation.voice_user`).
+   Never give the browser the real API key; it only gets short-lived keys from `/api/voice/session`.
 
 ## Code conventions
 

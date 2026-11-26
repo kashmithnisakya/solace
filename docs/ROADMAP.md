@@ -7,7 +7,7 @@
 | 2. Assessment + issue graph | Gentle question flow (loosely guided by PHQ-9 / GAD-7); extract issues, emotions, triggers and supports into a graph; graph view | ✅ First version |
 | 2.5 Human-like companion + Apple-style UI | Natural tone, streaming replies, onboarding, sheets, tap-to-call, history restore, security headers, rate limiting | ✅ First version |
 | 3. Knowledge base (RAG) | Psychology (e.g. WHO mhGAP, self-help guides), opt-in faith sources (Buddhism, Hinduism, Islam, Christianity), general health info; citations on every answer | Next |
-| 4. Real-time voice | OpenAI Realtime API over WebRTC, with the same safety screening | Planned |
+| 4. Real-time voice | OpenAI Realtime API over WebRTC, with the same safety screening | ✅ First version |
 | 5. Platform | Accounts, history, consent and data deletion, counselor dashboard, human hand-off | Planned |
 | 6. Safety evaluation | Red-team suite, professional review, monitoring | Ongoing |
 | 7. Sinhala (then Tamil) | Prompts, keyword screen, translated sources, voice quality testing | Planned |
