@@ -82,7 +82,7 @@ uv run pytest
 uv run ruff check . && uv run ruff format .
 ```
 
-Contributions are very welcome, especially from mental-health professionals. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are very welcome, especially from mental-health professionals. See [CONTRIBUTING.md](CONTRIBUTING.md). Coding agents should follow [AGENTS.md](AGENTS.md).
 
 ## License
 
