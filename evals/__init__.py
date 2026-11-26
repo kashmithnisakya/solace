@@ -14,7 +14,7 @@ from pathlib import Path
 DATA = Path(__file__).parent / "data"
 REPORTS = Path(__file__).parent / "reports"
 LEVELS = ["none", "low", "moderate", "high", "imminent"]
-INFORMATIONAL_TAGS = {"sinhala"}  # reported, but not yet required to pass
+INFORMATIONAL_TAGS: set[str] = set()  # tags reported but not yet required to pass
 
 
 def load(name: str) -> list[dict]:

@@ -4,6 +4,7 @@ from agents import Agent, RunContextWrapper
 
 from solace.assistants.companion import human_sections
 from solace.assistants.context import UserContext
+from solace.i18n import text
 
 INSTRUCTIONS = """\
 You are Solace in crisis-support mode. The person may be thinking about suicide or self-harm.
@@ -50,9 +51,4 @@ def build_crisis_agent(model: str | None) -> Agent[UserContext]:
 
 def fallback_crisis_message(ctx: UserContext) -> str:
     """Used if the model is unavailable. A person in crisis must never get an error."""
-    return (
-        "I'm really glad you told me, and I'm worried about you. You deserve support from a real "
-        "person right now. Please reach out to one of these, they are free and confidential:\n"
-        f"{ctx.resources_text()}\n"
-        "If you are in immediate danger, please call emergency services now. Are you safe right now?"
-    )
+    return text("fallback_crisis", ctx.language, resources=ctx.resources_text())

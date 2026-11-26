@@ -65,7 +65,7 @@ async def run_replies(
             transcript: list[tuple[str, str]] = []
             agents, replies = [], []
             for turn in sc["turns"]:
-                reply = await conv.send(sid, turn, faith=sc.get("faith"))
+                reply = await conv.send(sid, turn, faith=sc.get("faith"), lang=sc.get("lang"))
                 transcript += [("user", turn), ("assistant", reply.reply)]
                 agents.append(reply.agent)
                 replies.append(reply.reply)

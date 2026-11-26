@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from solace import __version__
+from solace import __version__, i18n
 from solace.assessment import coverage, next_gap
 from solace.config import get_settings
 from solace.conversation import Conversation, Message, Reply, VoiceTurn
@@ -108,8 +108,9 @@ async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
     body: dict = {"detail": exc.detail}
     if exc.status_code == 429:
         # Someone hitting a limit may still be in crisis: always include real help.
-        body["message"] = "You're sending messages quickly. Take a breath, and try again in a minute."
-        body["resources"] = [r.model_dump() for r in resources_for(get_settings().solace_region)]
+        lang = i18n.clean(request.query_params.get("lang"))
+        body["message"] = i18n.text("slow_down", lang)
+        body["resources"] = [r.model_dump() for r in resources_for(get_settings().solace_region, lang)]
     return JSONResponse(body, status_code=exc.status_code, headers=getattr(exc, "headers", None))
 
 
@@ -120,6 +121,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     session_id: str | None = Field(default=None, pattern=SESSION_RE)
     faith: str | None = None
+    lang: str | None = None  # the person's app language, "en" or "si"
 
     def clean_faith(self) -> str | None:
         return self.faith.lower() if self.faith and self.faith.lower() in FAITHS else None
@@ -134,15 +136,15 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/resources")
-def resources() -> list[Resource]:
-    return resources_for(get_settings().solace_region)
+def resources(lang: str | None = None) -> list[Resource]:
+    return resources_for(get_settings().solace_region, i18n.clean(lang))
 
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest, request: Request) -> Reply:
     check_rate(request)
     session_id = req.session_id or uuid.uuid4().hex
-    return await conversation().send(session_id, req.message.strip(), faith=req.clean_faith())
+    return await conversation().send(session_id, req.message.strip(), faith=req.clean_faith(), lang=req.lang)
 
 
 @app.post("/api/chat/stream")
@@ -152,7 +154,9 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     session_id = req.session_id or uuid.uuid4().hex
 
     async def events() -> AsyncIterator[str]:
-        async for event in conversation().stream(session_id, req.message.strip(), faith=req.clean_faith()):
+        async for event in conversation().stream(
+            session_id, req.message.strip(), faith=req.clean_faith(), lang=req.lang
+        ):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
@@ -168,6 +172,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
 class VoiceStart(BaseModel):
     session_id: str | None = Field(default=None, pattern=SESSION_RE)
     faith: str | None = None
+    lang: str | None = None
 
     clean_faith = ChatRequest.clean_faith
 
@@ -191,9 +196,10 @@ async def voice_session(req: VoiceStart, request: Request) -> VoiceCall:
         raise HTTPException(status_code=409, detail="with_counsellor")
     if not settings.openai_api_key and voice_mint is None:
         raise HTTPException(status_code=503, detail="voice_unavailable")
-    instructions = await conversation().voice_start(session_id, faith=req.clean_faith())
+    lang = i18n.clean(req.lang)
+    instructions = await conversation().voice_start(session_id, faith=req.clean_faith(), lang=lang)
     try:
-        secret = await (voice_mint or openai_minter(settings))(session_config(settings, instructions))
+        secret = await (voice_mint or openai_minter(settings))(session_config(settings, instructions, lang))
     except Exception as exc:
         logging.getLogger(__name__).exception("could not start a voice session")
         raise HTTPException(status_code=503, detail="voice_unavailable") from exc
@@ -202,7 +208,7 @@ async def voice_session(req: VoiceStart, request: Request) -> VoiceCall:
         client_secret=secret["value"],
         expires_at=secret["expires_at"],
         model=settings.solace_voice_model,
-        resources=resources_for(settings.solace_region),
+        resources=resources_for(settings.solace_region, lang),
     )
 
 
@@ -211,6 +217,7 @@ class VoiceText(BaseModel):
     role: Literal["user", "assistant"]
     text: str = Field(min_length=1, max_length=4000)
     faith: str | None = None
+    lang: str | None = None
 
     clean_faith = ChatRequest.clean_faith
 
@@ -223,7 +230,7 @@ async def voice_turn(req: VoiceText, request: Request) -> VoiceTurn | Response:
     if req.role == "assistant":
         await conversation().voice_assistant(req.session_id, text)
         return Response(status_code=204)
-    return await conversation().voice_user(req.session_id, text, faith=req.clean_faith())
+    return await conversation().voice_user(req.session_id, text, faith=req.clean_faith(), lang=req.lang)
 
 
 @app.get("/api/sessions/{session_id}/messages")

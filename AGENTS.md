@@ -77,6 +77,9 @@ docs/ROADMAP.md          phases and status
 - Keep JS and CSS in `solace/web/static/`. Inline `<script>`/`<style>` and `style="…"` attributes are blocked by the CSP.
 - Render model text with `textContent`, never `innerHTML`.
 
+**Languages:** never hard-code interface text. Add every string to both `en` and `si` in
+`solace/web/static/i18n.js` and use `t("key")` or a `data-i18n` attribute. Server texts live in `solace/i18n.py`.
+
 **Demo GIF:** any change to `solace/web/` must refresh `docs/demo.gif` (and
 `docs/demo/counsellor-dashboard.jpg` if the dashboard changed) in the same PR. See `docs/demo/README.md`.
 

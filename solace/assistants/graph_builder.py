@@ -28,6 +28,8 @@ Rules:
 - Use the person's own meaning. Do not invent, diagnose, or guess.
 - Labels are short (1-4 words), lowercase, no names, no phone numbers, no addresses.
 - If something already exists in the map, reuse its label exactly.
+- Write labels in the language the person writes in (Sinhala script for Sinhala or romanised Sinhala,
+  in everyday words). Domain notes can be in English: only counsellors read them.
 - Issue severity: 0 unknown, 1 mild, 2 moderate, 3 severe, based only on what they said.
 """
 

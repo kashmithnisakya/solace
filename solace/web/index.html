@@ -14,17 +14,17 @@
 <body>
 
 <header class="bar">
-  <button class="icon-btn" id="mapBtn" type="button" aria-label="Your map">
+  <button class="icon-btn" id="mapBtn" type="button" aria-label="Your map" data-i18n-aria="aria.map">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="17" r="2.4"/><path d="M8 8l2.6 7M16.2 7.6L13.4 15M8.4 6.8l7.2-.6"/></svg>
   </button>
   <div class="title">
     <div class="avatar" aria-hidden="true"></div>
     <div>
       <h1>Solace</h1>
-      <p class="status" id="status">Here for you</p>
+      <p class="status" id="status" data-i18n="status.here">Here for you</p>
     </div>
   </div>
-  <button class="icon-btn" id="moreBtn" type="button" aria-label="Settings and support">
+  <button class="icon-btn" id="moreBtn" type="button" aria-label="Settings and support" data-i18n-aria="aria.settings">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>
   </button>
 </header>
@@ -32,35 +32,39 @@
 <div class="handoff-bar" id="handoffBar" hidden>
   <span class="dot" aria-hidden="true"></span>
   <span class="handoff-text" id="handoffText" aria-live="polite"></span>
-  <button class="text-btn" id="handoffEnd" type="button">Cancel</button>
+  <button class="text-btn" id="handoffEnd" type="button" data-i18n="cancel">Cancel</button>
 </div>
 
-<main class="thread" id="thread" aria-live="polite" aria-label="Conversation"></main>
+<main class="thread" id="thread" aria-live="polite" aria-label="Conversation" data-i18n-aria="aria.conversation"></main>
 
 <form class="composer" id="composer" autocomplete="off">
   <div class="field">
-    <textarea id="input" rows="1" placeholder="Message" aria-label="Message" maxlength="4000" enterkeyhint="send"></textarea>
-    <button class="voice-btn" id="voiceBtn" type="button" aria-label="Talk with Solace by voice">
+    <textarea id="input" rows="1" placeholder="Message" aria-label="Message" data-i18n-placeholder="composer.placeholder" data-i18n-aria="composer.placeholder" maxlength="4000" enterkeyhint="send"></textarea>
+    <button class="voice-btn" id="voiceBtn" type="button" aria-label="Talk with Solace by voice" data-i18n-aria="aria.voice">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
     </button>
-    <button class="send" id="send" type="submit" aria-label="Send" disabled hidden>
+    <button class="send" id="send" type="submit" aria-label="Send" data-i18n-aria="aria.send" disabled hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg>
     </button>
   </div>
-  <p class="footnote">Solace is an AI, not a therapist. In an emergency, call <a href="tel:1926">1926</a> or <a href="tel:119">119</a>.</p>
+  <p class="footnote"><span data-i18n="footnote.a">Solace is an AI, not a therapist. In an emergency, call</span> <a href="tel:1926">1926</a> <span data-i18n="footnote.or">or</span> <a href="tel:119">119</a><span data-i18n="footnote.end">.</span></p>
 </form>
 
 <!-- Welcome -->
 <dialog class="sheet" id="welcome" aria-labelledby="welcomeTitle">
   <div class="sheet-body welcome">
+    <div class="segmented" id="welcomeLang" role="radiogroup" aria-label="Language / භාෂාව">
+      <button type="button" role="radio" data-lang="en">English</button>
+      <button type="button" role="radio" data-lang="si">සිංහල</button>
+    </div>
     <div class="hero-mark" aria-hidden="true"></div>
-    <h2 id="welcomeTitle">Welcome to Solace</h2>
+    <h2 id="welcomeTitle" data-i18n="welcome.title">Welcome to Solace</h2>
     <ul class="features">
-      <li><span class="f-icon f-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg></span><div><strong>A safe place to talk</strong><p>Share what's on your mind, at your own pace. No judgement.</p></div></li>
-      <li><span class="f-icon f-help" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span><div><strong>Real help when you need it</strong><p>Solace is an AI, not a therapist. If things get hard, it will connect you with real people.</p></div></li>
-      <li><span class="f-icon f-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>Private, and yours</strong><p>No account needed. Delete everything any time from settings.</p></div></li>
+      <li><span class="f-icon f-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg></span><div><strong data-i18n="welcome.f1.title">A safe place to talk</strong><p data-i18n="welcome.f1.body">Share what's on your mind, at your own pace. No judgement.</p></div></li>
+      <li><span class="f-icon f-help" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span><div><strong data-i18n="welcome.f2.title">Real help when you need it</strong><p data-i18n="welcome.f2.body">Solace is an AI, not a therapist. If things get hard, it will connect you with real people.</p></div></li>
+      <li><span class="f-icon f-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong data-i18n="welcome.f3.title">Private, and yours</strong><p data-i18n="welcome.f3.body">No account needed. Delete everything any time from settings.</p></div></li>
     </ul>
-    <button class="btn-primary" id="welcomeContinue" type="button">Continue</button>
+    <button class="btn-primary" id="welcomeContinue" type="button" data-i18n="welcome.continue">Continue</button>
   </div>
 </dialog>
 
@@ -68,14 +72,14 @@
 <dialog class="sheet tall" id="mapSheet" aria-labelledby="mapTitle">
   <div class="sheet-head">
     <span class="grabber" aria-hidden="true"></span>
-    <h2 id="mapTitle">Your Map</h2>
-    <button class="text-btn" type="button" data-close>Done</button>
+    <h2 id="mapTitle" data-i18n="map.title">Your Map</h2>
+    <button class="text-btn" type="button" data-close data-i18n="done">Done</button>
   </div>
   <div class="sheet-body">
-    <p class="caption">What you've shared, and how it connects. Only you can see this.</p>
+    <p class="caption" data-i18n="map.caption">What you've shared, and how it connects. Only you can see this.</p>
     <div class="map-card"><div id="map"></div></div>
     <div class="progress-row">
-      <span>Understanding</span>
+      <span data-i18n="map.understanding">Understanding</span>
       <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="progress"><div id="progressFill"></div></div>
     </div>
     <div class="legend" id="legend"></div>
@@ -86,27 +90,30 @@
 <dialog class="sheet tall" id="settingsSheet" aria-labelledby="settingsTitle">
   <div class="sheet-head">
     <span class="grabber" aria-hidden="true"></span>
-    <h2 id="settingsTitle">Settings</h2>
-    <button class="text-btn" type="button" data-close>Done</button>
+    <h2 id="settingsTitle" data-i18n="settings.title">Settings</h2>
+    <button class="text-btn" type="button" data-close data-i18n="done">Done</button>
   </div>
   <div class="sheet-body">
-    <h3 class="group-label">Talk to someone now</h3>
+    <h3 class="group-label" data-i18n="settings.now">Talk to someone now</h3>
     <ul class="list" id="supportList"></ul>
 
-    <h3 class="group-label">Talk to a person</h3>
+    <h3 class="group-label" data-i18n="settings.person">Talk to a person</h3>
     <ul class="list">
-      <li><button class="row" id="settingsHandoff" type="button"><span class="grow">Chat with a Counsellor<small>A trained person joins this chat</small></span><span class="call">Ask</span></button></li>
+      <li><button class="row" id="settingsHandoff" type="button"><span class="grow"><span data-i18n="settings.handoff">Chat with a Counsellor</span><small data-i18n="settings.handoff.note">A trained person joins this chat</small></span><span class="call" data-i18n="settings.ask">Ask</span></button></li>
     </ul>
 
-    <h3 class="group-label">Faith</h3>
+    <h3 class="group-label" data-i18n="settings.language">Language</h3>
+    <ul class="list" id="langList" role="radiogroup" aria-label="Language / භාෂාව"></ul>
+
+    <h3 class="group-label" data-i18n="settings.faith">Faith</h3>
     <ul class="list" id="faithList" role="radiogroup" aria-label="Include faith in conversations"></ul>
-    <p class="group-note">If you choose a faith, Solace may gently draw on it when it helps. It will never preach.</p>
+    <p class="group-note" data-i18n="settings.faith.note">If you choose a faith, Solace may gently draw on it when it helps. It will never preach.</p>
 
-    <h3 class="group-label">Privacy</h3>
+    <h3 class="group-label" data-i18n="settings.privacy">Privacy</h3>
     <ul class="list">
-      <li><button class="row destructive" id="deleteBtn" type="button">Delete Conversation</button></li>
+      <li><button class="row destructive" id="deleteBtn" type="button" data-i18n="settings.delete">Delete Conversation</button></li>
     </ul>
-    <p class="group-note">Deletes your messages and your map from Solace. This can't be undone.</p>
+    <p class="group-note" data-i18n="settings.delete.note">Deletes your messages and your map from Solace. This can't be undone.</p>
   </div>
 </dialog>
 
@@ -114,14 +121,14 @@
 <dialog class="sheet" id="handoffSheet" aria-labelledby="handoffTitle">
   <div class="sheet-body welcome">
     <div class="hero-mark person" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></div>
-    <h2 id="handoffTitle">Talk to a real person</h2>
+    <h2 id="handoffTitle" data-i18n="handoff.title">Talk to a real person</h2>
     <ul class="features">
-      <li><span class="f-icon f-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg></span><div><strong>A counsellor joins this chat</strong><p>A trained person will read this conversation and your map, so you don't have to start over.</p></div></li>
-      <li><span class="f-icon f-help" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span><div><strong>Solace stays with you</strong><p>Until they join, Solace keeps you company. You can cancel any time.</p></div></li>
+      <li><span class="f-icon f-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg></span><div><strong data-i18n="handoff.f1.title">A counsellor joins this chat</strong><p data-i18n="handoff.f1.body">A trained person will read this conversation and your map, so you don't have to start over.</p></div></li>
+      <li><span class="f-icon f-help" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span><div><strong data-i18n="handoff.f2.title">Solace stays with you</strong><p data-i18n="handoff.f2.body">Until they join, Solace keeps you company. You can cancel any time.</p></div></li>
     </ul>
     <p class="avail" id="handoffAvail" aria-live="polite"></p>
-    <button class="btn-primary" id="handoffConfirm" type="button">Ask for a Counsellor</button>
-    <button class="btn-plain" type="button" data-close>Not Now</button>
+    <button class="btn-primary" id="handoffConfirm" type="button" data-i18n="handoff.confirm">Ask for a Counsellor</button>
+    <button class="btn-plain" type="button" data-close data-i18n="handoff.later">Not Now</button>
   </div>
 </dialog>
 
@@ -136,41 +143,42 @@
     <div class="orb-halo" id="orbHalo"></div>
     <div class="orb" id="orb"></div>
   </div>
-  <p class="captions" id="captions" aria-live="polite">Speak whenever you're ready.</p>
-  <section class="call-care" id="callCare" hidden aria-label="Support lines">
-    <p>You can talk to a real person right now. Free and confidential.</p>
+  <p class="captions" id="captions" aria-live="polite" data-i18n="voice.ready">Speak whenever you're ready.</p>
+  <section class="call-care" id="callCare" hidden aria-label="Support lines" data-i18n-aria="care.aria">
+    <p data-i18n="voice.care">You can talk to a real person right now. Free and confidential.</p>
     <div class="call-care-list" id="callCareList"></div>
   </section>
   <div class="call-controls">
     <div class="ctl">
-      <button class="round" id="muteBtn" type="button" aria-pressed="false" aria-label="Mute">
+      <button class="round" id="muteBtn" type="button" aria-pressed="false" aria-label="Mute" data-i18n-aria="voice.muteAria">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/><path class="slash" d="M4 4l16 16"/></svg>
       </button>
-      <span>mute</span>
+      <span data-i18n="voice.mute">mute</span>
     </div>
     <div class="ctl">
-      <button class="round end" id="endBtn" type="button" aria-label="End call">
+      <button class="round end" id="endBtn" type="button" aria-label="End call" data-i18n-aria="voice.endAria">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 14.2c4.7-4.3 12.3-4.3 17 0l-1.9 2.3a1 1 0 0 1-1.3.2l-2.4-1.5a1 1 0 0 1-.5-.9v-1.6a12 12 0 0 0-4.8 0v1.6a1 1 0 0 1-.5.9l-2.4 1.5a1 1 0 0 1-1.3-.2z"/></svg>
       </button>
-      <span>end</span>
+      <span data-i18n="voice.end">end</span>
     </div>
   </div>
-  <p class="call-note">Solace is an AI. Your voice is processed by OpenAI to hold the conversation.</p>
+  <p class="call-note" data-i18n="voice.note">Solace is an AI. Your voice is processed by OpenAI to hold the conversation.</p>
 </dialog>
 
 <!-- Confirm -->
 <dialog class="alert" id="confirmDelete" aria-labelledby="confirmTitle">
   <div class="alert-body">
-    <h2 id="confirmTitle">Delete Conversation?</h2>
-    <p>Your messages and your map will be permanently deleted.</p>
+    <h2 id="confirmTitle" data-i18n="delete.title">Delete Conversation?</h2>
+    <p data-i18n="delete.body">Your messages and your map will be permanently deleted.</p>
   </div>
   <div class="alert-actions">
-    <button type="button" id="cancelDelete">Cancel</button>
-    <button type="button" class="destructive" id="confirmDeleteBtn">Delete</button>
+    <button type="button" id="cancelDelete" data-i18n="cancel">Cancel</button>
+    <button type="button" class="destructive" id="confirmDeleteBtn" data-i18n="delete">Delete</button>
   </div>
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js" integrity="sha512-EY3U1MWdgKx0P1dqTE4inlKz2cpXtWpsR1YUyD855Hs6RL/A0cyvrKh60EpE8wDZ814cTe1KgRK+sG0Rn792vQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+<script src="/static/i18n.js" defer></script>
 <script src="/static/app.js" defer></script>
 </body>
 </html>

@@ -19,6 +19,7 @@ from agents import Agent, RunContextWrapper, Runner, SQLiteSession
 from openai.types.responses import ResponseTextDeltaEvent
 from pydantic import BaseModel
 
+from solace import i18n
 from solace.assessment import next_gap
 from solace.assistants.classifier import build_classifier
 from solace.assistants.companion import build_companion
@@ -39,10 +40,7 @@ Respond = Callable[[Agent, str, UserContext, SQLiteSession], Awaitable[str]]
 StreamRespond = Callable[[Agent, str, UserContext, SQLiteSession], AsyncIterator[str]]
 BuildGraph = Callable[[str, str], Awaitable[GraphUpdate]]
 
-GENERIC_ERROR = (
-    "I'm sorry, I'm having trouble responding right now. Please try again in a moment. "
-    "If you need to talk to someone urgently, the support lines below are free and confidential."
-)
+GENERIC_ERROR = i18n.text("generic_error", "en")
 
 
 class TurnInfo(BaseModel):
@@ -145,26 +143,30 @@ class Conversation:
 
     # ---------- public API ----------
 
-    async def send(self, session_id: str, message: str, faith: str | None = None) -> Reply:
+    async def send(
+        self, session_id: str, message: str, faith: str | None = None, lang: str | None = None
+    ) -> Reply:
         handoff = self.platform.open_for(session_id)
         if handoff and handoff.status == "active":
-            info = await self._to_counsellor(session_id, message, handoff)
+            info = await self._to_counsellor(session_id, message, handoff, lang)
             return Reply(**info.model_dump(), reply="", graph=self.graphs.load(session_id))
-        turn = await self._prepare(session_id, message, faith, waiting=handoff is not None)
+        turn = await self._prepare(session_id, message, faith, waiting=handoff is not None, lang=lang)
         text, update = await asyncio.gather(self._safe_respond(turn), self._safe_build_graph(turn))
         graph = self._finish(turn, update)
         info = turn.info()
-        if text == GENERIC_ERROR:
+        if text == i18n.text("generic_error", turn.ctx.language):
             info.resources = turn.ctx.resources  # always offer real help when we can't
         text, sources = strip_citations(text, turn.ctx.knowledge)
         return Reply(**info.model_dump(), reply=text, graph=graph, sources=sources)
 
-    async def stream(self, session_id: str, message: str, faith: str | None = None) -> AsyncIterator[dict]:
+    async def stream(
+        self, session_id: str, message: str, faith: str | None = None, lang: str | None = None
+    ) -> AsyncIterator[dict]:
         """Yield events: {"type": "start", ...}, {"type": "delta", "text"}, {"type": "done", "graph"}."""
         handoff = self.platform.open_for(session_id)
         if handoff and handoff.status == "active":
             # A real person is here: Solace steps back and the message goes to them.
-            info = await self._to_counsellor(session_id, message, handoff)
+            info = await self._to_counsellor(session_id, message, handoff, lang)
             yield {"type": "start", **info.model_dump(mode="json"), "human": True}
             yield {
                 "type": "done",
@@ -172,7 +174,7 @@ class Conversation:
                 "sources": [],
             }
             return
-        turn = await self._prepare(session_id, message, faith, waiting=handoff is not None)
+        turn = await self._prepare(session_id, message, faith, waiting=handoff is not None, lang=lang)
         yield {"type": "start", **turn.info().model_dump(mode="json")}
 
         graph_task = asyncio.create_task(self._safe_build_graph(turn))
@@ -183,7 +185,11 @@ class Conversation:
                 yield {"type": "delta", "text": chunk}
         except Exception:
             log.exception("streaming failed (agent=%s)", turn.agent.name)
-            fallback = fallback_crisis_message(turn.ctx) if turn.in_crisis else GENERIC_ERROR
+            fallback = (
+                fallback_crisis_message(turn.ctx)
+                if turn.in_crisis
+                else i18n.text("generic_error", turn.ctx.language)
+            )
             prefix = "\n\n" if sent_any else ""
             yield {"type": "delta", "text": prefix + fallback}
             if not turn.in_crisis:
@@ -236,7 +242,9 @@ class Conversation:
             person(session_id), {"type": "message", "role": "counsellor", "name": safe_name, "text": text}
         )
 
-    async def _to_counsellor(self, session_id: str, message: str, handoff: Handoff) -> TurnInfo:
+    async def _to_counsellor(
+        self, session_id: str, message: str, handoff: Handoff, lang: str | None = None
+    ) -> TurnInfo:
         session = self.session(session_id)
         risk, in_crisis = await self._screen(session_id, session, message)
         await session.add_items([{"role": "user", "content": message}])
@@ -245,7 +253,7 @@ class Conversation:
         self._background.add(task)
         task.add_done_callback(self._background.discard)
         self._notify_counsellors(session_id, risk)
-        resources = resources_for(self.settings.solace_region)
+        resources = resources_for(self.settings.solace_region, i18n.reply_language(lang, message))
         return TurnInfo(
             session_id=session_id,
             agent="Counsellor",
@@ -269,16 +277,19 @@ class Conversation:
 
     # ---------- voice ----------
 
-    async def voice_start(self, session_id: str, faith: str | None = None) -> str:
+    async def voice_start(self, session_id: str, faith: str | None = None, lang: str | None = None) -> str:
         """Instructions for a new voice call, carrying on from wherever the conversation is."""
         graph = self.graphs.load(session_id)
         in_crisis = self._last_level.get(session_id, RiskLevel.NONE) >= RiskLevel.HIGH
         agent = self.crisis if in_crisis else self.companion
-        return await self._spoken(agent, self._context(graph, in_crisis, faith), session_id, opening=True)
+        ctx = self._context(graph, in_crisis, faith, i18n.clean(lang))
+        return await self._spoken(agent, ctx, session_id, opening=True)
 
-    async def voice_user(self, session_id: str, text: str, faith: str | None = None) -> VoiceTurn:
+    async def voice_user(
+        self, session_id: str, text: str, faith: str | None = None, lang: str | None = None
+    ) -> VoiceTurn:
         """A finished user transcript: screen it, save it, and return the instructions to use next."""
-        turn = await self._prepare(session_id, text, faith)
+        turn = await self._prepare(session_id, text, faith, lang=lang)
         turn.ctx.spoken = True
         await turn.session.add_items([{"role": "user", "content": text}])
         task = asyncio.create_task(self._update_graph(turn))  # don't make a spoken reply wait for this
@@ -326,7 +337,7 @@ class Conversation:
         return risk, risk.is_crisis or (previous >= RiskLevel.HIGH and risk.level >= RiskLevel.MODERATE)
 
     async def _prepare(
-        self, session_id: str, message: str, faith: str | None, waiting: bool = False
+        self, session_id: str, message: str, faith: str | None, waiting: bool = False, lang: str | None = None
     ) -> _Turn:
         session = self.session(session_id)
         graph = self.graphs.load(session_id)
@@ -337,17 +348,20 @@ class Conversation:
         )
         agent = self.crisis if in_crisis else self.companion
 
-        ctx = self._context(graph, in_crisis, faith)
+        ctx = self._context(graph, in_crisis, faith, i18n.reply_language(lang, message))
         ctx.knowledge = [] if in_crisis else notes  # crisis replies stay focused on safety
         ctx.waiting_for_human = waiting
         return _Turn(session_id, message, session, agent, ctx, risk, in_crisis, graph)
 
-    def _context(self, graph: IssueGraph, in_crisis: bool, faith: str | None) -> UserContext:
+    def _context(
+        self, graph: IssueGraph, in_crisis: bool, faith: str | None, lang: str = "en"
+    ) -> UserContext:
         gap = None if in_crisis else next_gap(graph)
         return UserContext(
             faith=faith,
             region=self.settings.solace_region,
-            resources=resources_for(self.settings.solace_region),
+            resources=resources_for(self.settings.solace_region, lang),
+            language=lang,
             graph_summary=graph.summary(),
             next_gap=gap.hint if gap else None,
         )
@@ -369,7 +383,9 @@ class Conversation:
             return await self._respond(turn.agent, turn.message, turn.ctx, turn.session)
         except Exception:
             log.exception("agent failed (agent=%s)", turn.agent.name)
-            return fallback_crisis_message(turn.ctx) if turn.in_crisis else GENERIC_ERROR
+            if turn.in_crisis:
+                return fallback_crisis_message(turn.ctx)
+            return i18n.text("generic_error", turn.ctx.language)
 
     async def _safe_build_graph(self, turn: _Turn) -> GraphUpdate:
         try:

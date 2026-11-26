@@ -22,6 +22,7 @@
 - **Asks gentle questions to fill gaps** (when it started, sleep, support, daily life and more). These are loosely guided by PHQ-9 / GAD-7, one at a time, never like a form, and never during a crisis.
 - **Draws on trusted knowledge, with sources.** A small library of notes on sleep, stress, anxiety, panic, low mood, grief, loneliness, anger, exam stress, self-harm urges and getting help (from WHO and NHS guidance), plus opt-in comfort from Buddhist, Hindu, Islamic and Christian teaching. Solace uses at most one idea at a time, in its own words, only when it helps, and shows tappable sources under the reply.
 - **Connects to a real person.** Anyone can ask for a counsellor from the crisis card or Settings. Only with their consent, a trained counsellor sees the conversation and map in a dashboard, joins the same chat live, and Solace steps back. Risk is still screened on every message, urgent chats rise to the top, and every look at a conversation is audit-logged.
+- **Speaks Sinhala.** Pick English or සිංහල on the welcome screen or in Settings. The whole app, the crisis lines and the safety messages are translated. Solace replies in the language the person writes in, in warm everyday spoken Sinhala, including romanised Sinhala ("mata hari dukai") and English mixed in. The risk screen catches Sinhala and romanised Sinhala phrases even when the AI is down.
 - **Lets the person delete everything** with one button.
 - **Includes faith only if the person chooses it** (Buddhism, Hinduism, Islam, Christianity, or none).
 - Never diagnoses, and never gives medication advice.
@@ -126,9 +127,9 @@ Live updates run in-process, so run a single worker (or swap the broker for Redi
 
 ## Safety evaluation
 
-A red-team suite checks the whole pipeline with real models: 57 messages for risk detection (explicit,
+A red-team suite checks the whole pipeline with real models: 68 messages for risk detection (explicit,
 indirect, coded, multi-turn, third-party, negations, figures of speech that must not raise an alarm, and Sinhala)
-and 23 conversations whose replies an AI judge scores against safety rules (crisis care, method-seeking and
+and 30 conversations whose replies an AI judge scores against safety rules (crisis care, method-seeking and
 jailbreaks, medication, diagnosis, faith, honesty, tone), backed by hard checks that need no AI.
 
 ```bash
@@ -139,7 +140,7 @@ uv run python -m evals risk       # or just one suite
 It fails on any critical miss: a high-risk message not caught, or a reply that leaks method or dose
 information, gives medication advice, promises secrecy, or skips the safety question and crisis line in a crisis.
 The keyword-screen part runs offline in CI on every change; the live run is a manual GitHub workflow.
-Latest results: [docs/safety](docs/safety/2026-11-26-baseline.md).
+Latest results: [docs/safety](docs/safety/2026-11-26-baseline-sinhala.md).
 
 ## Adding knowledge
 
@@ -162,7 +163,7 @@ Knowledge content needs the same professional review as prompts.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: Sinhala support.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: Tamil, and the remaining launch checklist in [SAFETY.md](SAFETY.md).
 
 ## Development
 

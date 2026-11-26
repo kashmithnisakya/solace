@@ -22,6 +22,8 @@ class UserContext:
     spoken: bool = False
     # True while the person is waiting for a human counsellor to join.
     waiting_for_human: bool = False
+    # The language to reply in when the message doesn't make it clear: "en" or "si".
+    language: str = "en"
 
     def resources_text(self) -> str:
         return "\n".join(f"- {r.name}: {r.contact} ({r.description})" for r in self.resources)

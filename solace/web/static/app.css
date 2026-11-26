@@ -65,7 +65,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--label);
-  font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui,
+    "Sinhala Sangam MN", "Noto Sans Sinhala", "Iskoola Pota", sans-serif;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   display: flex;
@@ -74,6 +75,18 @@ body {
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 a { color: var(--accent); text-decoration: none; }
 :focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; border-radius: 10px; }
+
+/* Sinhala script has tall vowel signs: give lines a little more room. */
+:lang(si) body, :lang(si) textarea { line-height: 1.55; }
+:lang(si) .features p, :lang(si) .group-note, :lang(si) .caption { line-height: 1.5; }
+
+/* Segmented control (language) */
+.segmented {
+  display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 2px; margin-bottom: 22px;
+  border-radius: 9px; background: var(--fill);
+}
+.segmented button { padding: 6px 18px; border-radius: 7px; font-size: 14px; font-weight: 500; color: var(--label); }
+.segmented button[aria-checked="true"] { background: var(--bg-elevated); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
 
 /* ---------- Navigation bar ---------- */
 .bar {

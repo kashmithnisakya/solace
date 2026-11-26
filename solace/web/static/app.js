@@ -21,9 +21,9 @@ const state = {
   busy: false,
 };
 
-const FAITHS = [["", "None"], ["buddhism", "Buddhism"], ["hinduism", "Hinduism"], ["islam", "Islam"], ["christianity", "Christianity"]];
+const FAITHS = [["", "faith.none"], ["buddhism", "faith.buddhism"], ["hinduism", "faith.hinduism"], ["islam", "faith.islam"], ["christianity", "faith.christianity"]];
 const NODE_COLORS = { issue: "--red", emotion: "--orange", trigger: "--pink", person: "--accent", support: "--green", strength: "--teal" };
-const NODE_NAMES = { issue: "Issue", emotion: "Feeling", trigger: "Trigger", person: "Person", support: "Support", strength: "Strength" };
+const NODE_TYPES = ["issue", "emotion", "trigger", "person", "support", "strength"];
 
 const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -48,7 +48,7 @@ function addBubble(role, text) {
 
 function addCounsellorBubble(name, text) {
   const last = thread.lastElementChild;
-  if (!(last && last.classList.contains("human"))) thread.appendChild(el("div", "sender", `${name} · Counsellor`));
+  if (!(last && last.classList.contains("human"))) thread.appendChild(el("div", "sender", t("counsellor.label", { name })));
   const b = el("div", "bubble them human", text);
   thread.appendChild(b);
   scrollToEnd();
@@ -58,14 +58,14 @@ function addCounsellorBubble(name, text) {
 function addStamp() {
   const now = new Date();
   const s = el("div", "stamp");
-  const b = el("b", null, "Today ");
-  s.append(b, document.createTextNode(now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })));
+  const b = el("b", null, `${t("today")} `);
+  s.append(b, document.createTextNode(now.toLocaleTimeString(LANG === "si" ? "si-LK" : [], { hour: "numeric", minute: "2-digit" })));
   thread.appendChild(s);
 }
 
 function typingBubble() {
   const b = el("div", "bubble them");
-  b.setAttribute("aria-label", "Solace is typing");
+  b.setAttribute("aria-label", t("typing.aria"));
   const dots = el("span", "typing-dots");
   dots.append(el("i"), el("i"), el("i"));
   b.appendChild(dots);
@@ -75,7 +75,7 @@ function typingBubble() {
 }
 
 function setTyping(on) {
-  statusEl.textContent = on ? "typing…" : handoff.status === "active" ? "With a counsellor" : "Here for you";
+  statusEl.textContent = on ? t("status.typing") : handoff.status === "active" ? t("status.counsellor") : t("status.here");
   statusEl.classList.toggle("typing", on);
 }
 
@@ -104,7 +104,7 @@ function citedSources(raw, sources) {
 function addSources(sources) {
   if (!sources.length) return;
   const box = el("div", "sources");
-  box.appendChild(el("span", "sources-label", "Sources"));
+  box.appendChild(el("span", "sources-label", t("sources")));
   for (const s of sources) {
     const a = el("a", "source", s.title);
     a.href = s.url;
@@ -119,13 +119,13 @@ function addSources(sources) {
 
 function addCareCard(resources, urgent) {
   const card = el("section", "care");
-  card.setAttribute("aria-label", "Support lines");
+  card.setAttribute("aria-label", t("care.aria"));
   card.append(
-    el("h3", null, urgent ? "You deserve support right now" : "You don't have to carry this alone"),
-    el("p", null, "Free and confidential. Real people who want to help."),
+    el("h3", null, urgent ? t("care.urgent") : t("care.title")),
+    el("p", null, t("care.body")),
   );
   if (!handoff.status) {
-    const ask = el("button", "care-ask", "Chat with a counsellor here");
+    const ask = el("button", "care-ask", t("care.ask"));
     ask.type = "button";
     ask.addEventListener("click", openHandoffSheet);
     card.appendChild(ask);
@@ -136,7 +136,7 @@ function addCareCard(resources, urgent) {
     info.append(el("strong", null, r.name), el("span", null, r.hours ? `${r.contact} · ${r.hours}` : r.contact));
     const href = telHref(r.contact) || r.url;
     if (href) {
-      const a = el("a", `pill${href.startsWith("tel:") ? "" : " link"}`, href.startsWith("tel:") ? "Call" : "Open");
+      const a = el("a", `pill${href.startsWith("tel:") ? "" : " link"}`, href.startsWith("tel:") ? t("call") : t("open"));
       a.href = href;
       if (!href.startsWith("tel:")) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
       a.setAttribute("aria-label", `${a.textContent} ${r.name}`);
@@ -152,8 +152,8 @@ function addCareCard(resources, urgent) {
 
 function greeting() {
   const h = new Date().getHours();
-  const part = h < 5 ? "It's late, and I'm still here" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  return `${part}. I'm Solace. Whatever's on your mind, big or small, I'm here to listen. How are you doing today?`;
+  const part = t(h < 5 ? "greet.late" : h < 12 ? "greet.morning" : h < 18 ? "greet.afternoon" : "greet.evening");
+  return t("greet.body", { part });
 }
 
 function startFresh() {
@@ -202,10 +202,10 @@ async function send(message) {
   };
 
   try {
-    const res = await fetch("/api/chat/stream", {
+    const res = await fetch(`/api/chat/stream?lang=${LANG}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, session_id: state.sessionId, faith: state.faith || null }),
+      body: JSON.stringify({ message, session_id: state.sessionId, faith: state.faith || null, lang: LANG }),
     });
     if (res.status === 429) {
       const body = await res.json();
@@ -244,7 +244,7 @@ async function send(message) {
         }
       }
     }
-    if (!bubble) write("I'm here.");
+    if (!bubble) write(t("reply.empty"));
     bubble.textContent = cleanReply(raw);
     addSources(citedSources(raw, sources));
     if (state.resources.length && (crisis || !state.shownCare)) {
@@ -253,7 +253,7 @@ async function send(message) {
     }
   } catch {
     if (!bubble) typing.remove();
-    addBubble("assistant", "I couldn't connect just now. Please try again in a moment. If you need someone right away, you can call 1926 any time.");
+    addBubble("assistant", t("reply.offline"));
   } finally {
     setTyping(false);
     state.busy = false;
@@ -321,7 +321,7 @@ function renderSettings() {
     const grow = el("div", "grow");
     grow.append(document.createTextNode(r.name), el("small", null, r.hours ? `${r.contact} · ${r.hours}` : r.contact));
     row.append(grow);
-    if (href) row.append(el("span", "call", href.startsWith("tel:") ? "Call" : "Open"));
+    if (href) row.append(el("span", "call", href.startsWith("tel:") ? t("call") : t("open")));
     li.appendChild(row);
     support.appendChild(li);
   }
@@ -334,7 +334,7 @@ function renderSettings() {
     row.type = "button";
     row.setAttribute("role", "radio");
     row.setAttribute("aria-checked", String(state.faith === value));
-    row.append(el("span", "grow", label), el("span", "check", "✓"));
+    row.append(el("span", "grow", t(label)), el("span", "check", "✓"));
     row.addEventListener("click", () => {
       state.faith = value;
       store.set("solace.faith", value || null);
@@ -369,7 +369,8 @@ let cy = null;
 function renderLegend() {
   const legend = $("legend");
   legend.replaceChildren();
-  for (const [type, name] of Object.entries(NODE_NAMES)) {
+  for (const type of NODE_TYPES) {
+    const name = t(`node.${type}`);
     const s = el("span");
     const dot = el("i");
     dot.style.background = cssVar(NODE_COLORS[type]);
@@ -387,7 +388,7 @@ function drawMap() {
   if (cy) { cy.destroy(); cy = null; }
   if (!g.nodes.length || typeof cytoscape === "undefined") {
     box.replaceChildren(el("div", "empty-map",
-      g.nodes.length ? g.nodes.map((n) => n.label).join(" · ") : "Your map will grow as you share. Only you can see it."));
+      g.nodes.length ? g.nodes.map((n) => n.label).join(" · ") : t("map.empty")));
     return;
   }
   box.replaceChildren();
@@ -462,9 +463,9 @@ function showCallCare(resources) {
   for (const r of resources.slice(0, 3)) {
     const href = telHref(r.contact);
     if (!href) continue;
-    const a = el("a", "pill", `Call ${r.name.split(" (")[0]}`);
+    const a = el("a", "pill", t("callName", { name: r.name.split(" (")[0] }));
     a.href = href;
-    a.setAttribute("aria-label", `Call ${r.name}, ${r.contact}`);
+    a.setAttribute("aria-label", `${t("callName", { name: r.name })}, ${r.contact}`);
     list.appendChild(a);
   }
   $("callCare").hidden = !list.children.length;
@@ -479,7 +480,7 @@ async function postTurn(role, text) {
   const res = await fetch("/api/voice/turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ session_id: state.sessionId, role, text, faith: state.faith || null }),
+    body: JSON.stringify({ session_id: state.sessionId, role, text, faith: state.faith || null, lang: LANG }),
   });
   return res.status === 200 ? res.json() : null;
 }
@@ -528,7 +529,7 @@ function onRealtimeEvent(msg) {
   try { ev = JSON.parse(msg.data); } catch { return; }
   switch (ev.type) {
     case "input_audio_buffer.speech_started":
-      callStatus(call.muted ? "Muted" : "Listening…");
+      callStatus(call.muted ? t("voice.muted") : `${t("voice.listening")}…`);
       break;
     case "input_audio_buffer.committed": {
       // Hold this message's place in the thread, so the order stays right if transcription is slow.
@@ -549,7 +550,7 @@ function onRealtimeEvent(msg) {
       break;
     case "response.output_audio_transcript.delta":
       call.caption += ev.delta || "";
-      callStatus("Speaking");
+      callStatus(t("voice.speaking"));
       setCaption(call.caption);
       break;
     case "response.output_audio_transcript.done":
@@ -560,7 +561,7 @@ function onRealtimeEvent(msg) {
       const bubble = call.replies.get(ev.response?.id);
       if (bubble && ev.response.status !== "completed") bubble.textContent += "…";
       call.replies.delete(ev.response?.id);
-      callStatus(call.muted ? "Muted" : "Listening");
+      callStatus(call.muted ? t("voice.muted") : t("voice.listening"));
       break;
     }
     case "error":
@@ -602,7 +603,7 @@ function animateLevels(remote) {
 async function startCall() {
   if (call.active) return;
   if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
-    addNotice("Voice isn't supported in this browser. You can keep typing, I'm here.");
+    addNotice(t("voice.unsupported"));
     return;
   }
   Object.assign(call, { active: true, crisis: false, muted: false, caption: "", pending: new Map(), replies: new Map() });
@@ -610,8 +611,8 @@ async function startCall() {
   $("callCare").hidden = true;
   $("callSheet").classList.remove("care-on");
   $("callTimer").textContent = "0:00";
-  callStatus("Connecting…");
-  setCaption("Speak whenever you're ready.");
+  callStatus(t("voice.connecting"));
+  setCaption(t("voice.ready"));
   $("callSheet").showModal();
 
   try {
@@ -620,19 +621,19 @@ async function startCall() {
     });
   } catch {
     endCall(false);
-    addNotice("Solace needs microphone access for voice. You can allow it in your browser settings, or keep typing.");
+    addNotice(t("voice.mic"));
     return;
   }
 
   try {
-    const res = await fetch("/api/voice/session", {
+    const res = await fetch(`/api/voice/session?lang=${LANG}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: state.sessionId, faith: state.faith || null }),
+      body: JSON.stringify({ session_id: state.sessionId, faith: state.faith || null, lang: LANG }),
     });
     if (res.status === 409) {
       endCall(false);
-      addNotice("Voice is paused while you're chatting with a counsellor.");
+      addNotice(t("voice.paused"));
       return;
     }
     if (res.status === 429) {
@@ -658,7 +659,7 @@ async function startCall() {
     };
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        if (call.active) { endCall(); addNotice("The call dropped. You can start it again, or keep typing."); }
+        if (call.active) { endCall(); addNotice(t("voice.dropped")); }
       }
     };
     pc.addTrack(call.mic.getAudioTracks()[0], call.mic);
@@ -668,7 +669,7 @@ async function startCall() {
     call.dc.onopen = () => {
       call.startedAt = Date.now();
       call.tick = setInterval(() => { $("callTimer").textContent = fmtTime(Date.now() - call.startedAt); }, 500);
-      callStatus("Listening");
+      callStatus(t("voice.listening"));
       addStamp();
       // Solace picks up like a friend answering the phone.
       sendEvent({ type: "response.create" });
@@ -686,7 +687,7 @@ async function startCall() {
     await pc.setRemoteDescription({ type: "answer", sdp: await answer.text() });
   } catch {
     endCall(false);
-    addNotice("I couldn't start a voice call just now. You can keep typing, or try again in a moment.");
+    addNotice(t("voice.failed"));
   }
 }
 
@@ -704,15 +705,15 @@ function endCall(summary = true) {
   for (const p of call.pending.values()) { if (p.bubble.textContent === "…") p.bubble.remove(); p.resolve(); }
   Object.assign(call, { pc: null, dc: null, mic: null, audio: null, ctx: null, startedAt: 0 });
   if ($("callSheet").open) $("callSheet").close();
-  if (summary && duration > 0) addNotice(`Voice call · ${fmtTime(duration)}`);
+  if (summary && duration > 0) addNotice(t("voice.summary", { time: fmtTime(duration) }));
 }
 
 function toggleMute() {
   call.muted = !call.muted;
   call.mic?.getAudioTracks().forEach((t) => { t.enabled = !call.muted; });
   $("muteBtn").setAttribute("aria-pressed", String(call.muted));
-  $("muteBtn").setAttribute("aria-label", call.muted ? "Unmute" : "Mute");
-  callStatus(call.muted ? "Muted" : "Listening");
+  $("muteBtn").setAttribute("aria-label", call.muted ? t("voice.unmuteAria") : t("voice.muteAria"));
+  callStatus(call.muted ? t("voice.muted") : t("voice.listening"));
 }
 
 $("voiceBtn").addEventListener("click", startCall);
@@ -736,13 +737,13 @@ function setHandoff(status, name = null) {
   bar.hidden = !status;
   bar.classList.toggle("active", status === "active");
   if (status === "requested") {
-    $("handoffText").textContent = "Waiting for a counsellor. Solace is here meanwhile.";
-    $("handoffEnd").textContent = "Cancel";
+    $("handoffText").textContent = t("handoff.waiting");
+    $("handoffEnd").textContent = t("cancel");
   } else if (status === "active") {
-    $("handoffText").textContent = `${handoff.name} is here with you`;
-    $("handoffEnd").textContent = "End Chat";
+    $("handoffText").textContent = t("handoff.with", { name: handoff.name });
+    $("handoffEnd").textContent = t("handoff.end");
   }
-  statusEl.textContent = status === "active" ? "With a counsellor" : "Here for you";
+  statusEl.textContent = status === "active" ? t("status.counsellor") : t("status.here");
   if (status) listen(); else stopListening();
 }
 
@@ -756,11 +757,11 @@ function listen() {
       addCounsellorBubble(ev.name, ev.text);
     } else if (ev.type === "handoff" && ev.status === "active") {
       setHandoff("active", ev.name);
-      addNotice(`${ev.name}, a counsellor, joined the chat`);
+      addNotice(t("handoff.joined", { name: ev.name }));
     } else if (ev.type === "handoff" && ev.status === "closed") {
       const who = handoff.name;
       setHandoff(null);
-      addNotice(ev.by === "person" ? "You ended the chat." : `${who || "The counsellor"} left the chat. Solace is here with you again.`);
+      addNotice(ev.by === "person" ? t("handoff.youEnded") : t("handoff.left", { name: who || t("handoff.theCounsellor") }));
     }
   };
 }
@@ -779,8 +780,8 @@ async function openHandoffSheet() {
     const { online } = await (await fetch("/api/handoff/availability")).json();
     avail.classList.toggle("online", online > 0);
     avail.textContent = online > 0
-      ? "A counsellor is online now."
-      : "No counsellors are online right now. Your request will wait for the next one. If you need someone now, the free lines in Settings are open.";
+      ? t("handoff.online")
+      : t("handoff.offline");
   } catch { /* still allow asking */ }
 }
 
@@ -791,7 +792,7 @@ $("handoffConfirm").addEventListener("click", async () => {
   }
   $("handoffSheet").close();
   try {
-    const res = await fetch(`/api/sessions/${state.sessionId}/handoff`, {
+    const res = await fetch(`/api/sessions/${state.sessionId}/handoff?lang=${LANG}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ consent: true }),
@@ -799,9 +800,9 @@ $("handoffConfirm").addEventListener("click", async () => {
     if (!res.ok) throw new Error(String(res.status));
     const body = await res.json();
     setHandoff(body.status, body.counsellor);
-    addNotice("You asked for a counsellor. They'll see this conversation when they join.");
+    addNotice(t("handoff.asked"));
   } catch {
-    addNotice("I couldn't reach a counsellor just now. Please try again, or call 1926 to talk to someone.");
+    addNotice(t("handoff.failed"));
   }
 });
 
@@ -810,7 +811,7 @@ $("handoffEnd").addEventListener("click", async () => {
   const was = handoff.status;
   try { await fetch(`/api/sessions/${state.sessionId}/handoff`, { method: "DELETE" }); } catch { /* ignore */ }
   setHandoff(null);
-  addNotice(was === "active" ? "You ended the chat with the counsellor. Solace is here with you." : "Request cancelled.");
+  addNotice(was === "active" ? t("handoff.endedActive") : t("handoff.cancelled"));
 });
 
 async function restoreHandoff() {
@@ -822,6 +823,48 @@ async function restoreHandoff() {
 }
 
 /* ---------- boot ---------- */
-fetch("/api/resources").then((r) => r.json()).then((r) => { state.allResources = r; }).catch(() => {});
+/* ---------- language ---------- */
+function loadResources() {
+  fetch(`/api/resources?lang=${LANG}`).then((r) => r.json()).then((r) => { state.allResources = r; }).catch(() => {});
+}
+
+function renderLangPickers() {
+  document.querySelectorAll("#welcomeLang [data-lang]").forEach((b) => {
+    b.setAttribute("aria-checked", String(b.dataset.lang === LANG));
+  });
+  const list = $("langList");
+  list.replaceChildren();
+  for (const code of LANGS) {
+    const li = el("li");
+    const row = el("button", "row");
+    row.type = "button";
+    row.setAttribute("role", "radio");
+    row.setAttribute("aria-checked", String(LANG === code));
+    row.append(el("span", "grow", STRINGS[code]["lang.name"]), el("span", "check", "✓"));
+    row.addEventListener("click", () => changeLang(code));
+    li.appendChild(row);
+    list.appendChild(li);
+  }
+}
+
+function changeLang(code) {
+  setLang(code);
+  loadResources();
+  renderLangPickers();
+  renderSettings();
+  setTyping(false);
+  if (handoff.status) setHandoff(handoff.status);
+  // A brand-new conversation greets again in the new language.
+  const bubbles = thread.querySelectorAll(".bubble");
+  if (bubbles.length === 1 && !state.sessionId) startFresh();
+}
+
+document.querySelectorAll("#welcomeLang [data-lang]").forEach((b) => {
+  b.addEventListener("click", () => changeLang(b.dataset.lang));
+});
+
+applyI18n();
+renderLangPickers();
+loadResources();
 restore().then(restoreHandoff);
 updateSendState();
