@@ -19,6 +19,10 @@ Levels:
 Rules:
 - Indirect, coded, or joking language still counts ("unalive", "kms", "I'll just sleep forever").
 - When unsure between two levels, choose the higher one.
+- "I don't want to be here anymore", "I want to disappear for good" and similar are level 3 when the
+  person is clearly struggling: they often mean suicide, and the safe response is to ask directly.
+- Messages may be in Sinhala, Tamil, or romanised Sinhala ("mata marenna hithenawa" means "I feel like
+  dying"). Rate them exactly as you would in English.
 - Talking about someone else at risk (a friend, a child) is level 3 so the user gets resources.
 - Give short reasons that quote or paraphrase the message.
 """

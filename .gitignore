@@ -8,3 +8,5 @@ data/
 *.db
 .DS_Store
 .claude/settings.local.json
+evals/reports/*
+!evals/reports/.gitkeep

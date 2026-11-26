@@ -50,7 +50,9 @@ docs/ROADMAP.md          phases and status
 4. Never add method, dose, or self-harm instructions to any prompt, test, or doc.
 5. No diagnosis, no medication advice, faith content only when the person opted in.
 6. Changes to prompts or crisis flow need a test and should be flagged for professional review in the PR.
-7. When you find a risky phrase the keyword screen misses, add it to `tests/test_screen.py`.
+7. When you find a risky phrase the keyword screen misses, add it to `evals/data/risk_cases.json`
+   (and `tests/test_screen.py`). After any change to prompts, models or the safety layer, run
+   `uv run python -m evals` and only open the PR if it says PASS.
 8. Voice follows the same rules: every user transcript goes through `/api/voice/turn` (`Conversation.voice_user`).
    Never give the browser the real API key; it only gets short-lived keys from `/api/voice/session`.
 9. Knowledge notes are written in our own words with a working source `url`; never paste copyrighted text.

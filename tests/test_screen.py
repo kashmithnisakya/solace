@@ -30,3 +30,22 @@ def test_keyword_screen(text, expected):
 )
 def test_more_risky_phrasings_are_caught(text):
     assert keyword_screen(text).level >= RiskLevel.HIGH
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I can't stop thinking about suicide",
+        "I'm not okay, I want to kill myself",
+        "I don't want to live anymore",
+        "nothing helps, I keep cutting myself",
+        "I'm not going to lie, I think about ending it all",
+    ],
+)
+def test_negation_words_elsewhere_do_not_hide_risk(text):
+    assert keyword_screen(text).level >= RiskLevel.HIGH
+
+
+@pytest.mark.parametrize("text", ["I'm not suicidal, just tired", "I would never hurt myself"])
+def test_direct_negation_is_not_a_crisis_by_itself(text):
+    assert keyword_screen(text).level < RiskLevel.HIGH

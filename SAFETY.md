@@ -20,7 +20,8 @@ These rules apply to every change. A pull request that weakens them will not be 
 
 - [ ] Every crisis number in `solace/safety/hotlines.py` verified with the organisation
 - [ ] Prompts and the crisis flow reviewed by a licensed mental-health professional
-- [ ] Red-team evaluation of crisis conversations, including indirect and coded language
+- [x] Red-team evaluation of crisis conversations, including indirect and coded language (first version: `python -m evals`, [baseline](docs/safety/2026-11-26-baseline.md))
+- [ ] The evaluation datasets reviewed and extended by a mental-health professional, and run before every release with a PASS
 - [ ] Every note in `solace/knowledge/library/` reviewed for accuracy and safety by a professional (and faith notes by someone from that tradition)
 - [x] Human counsellor hand-off in place (first version)
 - [ ] Counsellors vetted, trained and supervised, with an agreed escalation process for imminent risk

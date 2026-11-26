@@ -9,16 +9,21 @@ import re
 from solace.safety.risk import RiskAssessment, RiskLevel
 
 _TIME = r"(tonight|today|right now|this (morning|evening|weekend)|after (this|i send))"
-_ACT = r"(kill|end|die|suicide)"
+# Talk about suicide itself, not about prevention work or statistics.
+_SUICIDE = r"suicid(e|al)\w*(?!\s+(prevention|awareness|hotline|helpline|line|rates?|statistics|research))"
+# Ending one's own life. "end it with my boyfriend" or "end my shift" are not.
+_END = r"end(ing)?\s+(it(\s+all)?(?!\s+with)|my (own )?life|myself|everything|things)\b"
+_ACT = rf"(kill(ing)? (myself|me)|{_END}|die\b|{_SUICIDE}|kms|unalive)"
 
 _PATTERNS: list[tuple[RiskLevel, str, str]] = [
     # (level, reason, regex)
     (
         RiskLevel.IMMINENT,
         "mentions a plan or method",
-        r"\b(overdose|hang (myself|me)|jump (off|from)|slit my|pills? to (die|end)|rope|noose)\b",
+        r"\b(overdose|hang (myself|me)|jump (off|from)|slit my|pills? to (die|end)|noose"
+        r"|(bought|got|have|tied?|tying) (a |the )?rope)\b",
     ),
-    (RiskLevel.IMMINENT, "mentions timing", rf"\b{_TIME}\b.*\b{_ACT}|\b{_ACT}\w*\b.*\b{_TIME}\b"),
+    (RiskLevel.IMMINENT, "mentions timing", rf"\b{_TIME}\b.*\b{_ACT}|\b{_ACT}.*\b{_TIME}\b"),
     (
         RiskLevel.IMMINENT,
         "says goodbye",
@@ -27,12 +32,25 @@ _PATTERNS: list[tuple[RiskLevel, str, str]] = [
     (
         RiskLevel.HIGH,
         "talks about suicide",
-        r"\b(suicid\w*|kill (myself|me)|end (my|it all|my life)|take my (own )?life|unalive|kms)\b",
+        rf"\b({_SUICIDE}|kill (myself|me)|{_END}|take my (own )?life|unalive|kms)",
     ),
     (
         RiskLevel.HIGH,
         "wants to die",
-        r"\b(want(ed)? to die|wanna die|better off dead|don'?t want to (live|be alive))\b",
+        r"\b(want(ed)? to die|wanna die|better off dead|don'?t want to (live|be alive)"
+        r"|don'?t want to (be here|exist|wake up) any ?more)\b",
+    ),
+    # Sinhala, in script and romanised ("Singlish"): "I feel like dying", "I want to die".
+    (
+        RiskLevel.HIGH,
+        "wants to die (Sinhala)",
+        r"(මැරෙන්න (හිතෙනවා|ඕනේ|ඕන)|මැරිලා යන්න|\bmarenna (hithenawa|hithenwa|one|ona|oney)\b"
+        r"|\bmarila yanna\b)",
+    ),
+    (
+        RiskLevel.MODERATE,
+        "tired of living (Sinhala)",
+        r"(ජීවත් වෙන්න එපා|\bjeewath (wenna|venna) epa\b|\bjeewithe epa\b)",
     ),
     (
         RiskLevel.HIGH,
@@ -53,11 +71,25 @@ _PATTERNS: list[tuple[RiskLevel, str, str]] = [
     ),
 ]
 
+# "I'm not suicidal", "I would never hurt myself": a negation right before the phrase.
+# Only these reasons can be cancelled, and only by a negation directly in front, so
+# "I can't stop thinking about suicide" still counts. The AI screener still checks every message.
+_NEGATABLE = {"talks about suicide", "talks about self-harm"}
+_NEGATION = re.compile(r"\b(not|never|n't)\s+((really|ever|be|feeling|going to|gonna)\s+)?$", re.IGNORECASE)
+
 _COMPILED = [(level, reason, re.compile(rx, re.IGNORECASE)) for level, reason, rx in _PATTERNS]
 
 
+def _matches(reason: str, rx: re.Pattern, text: str) -> bool:
+    for m in rx.finditer(text):
+        if reason in _NEGATABLE and _NEGATION.search(text[: m.start()]):
+            continue
+        return True
+    return False
+
+
 def keyword_screen(text: str) -> RiskAssessment:
-    hits = [(level, reason) for level, reason, rx in _COMPILED if rx.search(text)]
+    hits = [(level, reason) for level, reason, rx in _COMPILED if _matches(reason, rx, text)]
     if not hits:
         return RiskAssessment(source="keywords")
     level = max(level for level, _ in hits)
