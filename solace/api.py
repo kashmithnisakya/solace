@@ -185,12 +185,12 @@ async def voice_session(req: VoiceStart, request: Request) -> VoiceCall:
     """Start a voice call: a short-lived key for the browser's WebRTC connection to OpenAI."""
     check_rate(request, voice_call_limiter)
     settings = get_settings()
-    if not settings.openai_api_key and voice_mint is None:
-        raise HTTPException(status_code=503, detail="voice_unavailable")
     session_id = req.session_id or uuid.uuid4().hex
     handoff = conversation().platform.open_for(session_id)
     if handoff and handoff.status == "active":
         raise HTTPException(status_code=409, detail="with_counsellor")
+    if not settings.openai_api_key and voice_mint is None:
+        raise HTTPException(status_code=503, detail="voice_unavailable")
     instructions = await conversation().voice_start(session_id, faith=req.clean_faith())
     try:
         secret = await (voice_mint or openai_minter(settings))(session_config(settings, instructions))
