@@ -10,7 +10,7 @@
 | 4. Real-time voice | OpenAI Realtime API over WebRTC, with the same safety screening | ✅ First version |
 | 5. Platform | Counsellor accounts and dashboard, consented hand-off with live chat, audit log | ✅ First version |
 | 6. Safety evaluation | Red-team suite (risk detection + judged replies), offline checks in CI, manual live workflow | ✅ First version |
-| 7. Sinhala (then Tamil) | Prompts, keyword screen, translated sources, voice quality testing | Next |
+| 7. Sinhala (then Tamil) | Sinhala UI, replies, crisis lines, keyword screen and evaluation; Tamil next | ✅ Sinhala first version |
 
 ## Issue graph (Phase 2)
 

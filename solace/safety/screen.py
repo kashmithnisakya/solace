@@ -40,22 +40,34 @@ _PATTERNS: list[tuple[RiskLevel, str, str]] = [
         r"\b(want(ed)? to die|wanna die|better off dead|don'?t want to (live|be alive)"
         r"|don'?t want to (be here|exist|wake up) any ?more)\b",
     ),
-    # Sinhala, in script and romanised ("Singlish"): "I feel like dying", "I want to die".
-    (
-        RiskLevel.HIGH,
-        "wants to die (Sinhala)",
-        r"(මැරෙන්න (හිතෙනවා|ඕනේ|ඕන)|මැරිලා යන්න|\bmarenna (hithenawa|hithenwa|one|ona|oney)\b"
-        r"|\bmarila yanna\b)",
-    ),
-    (
-        RiskLevel.MODERATE,
-        "tired of living (Sinhala)",
-        r"(ජීවත් වෙන්න එපා|\bjeewath (wenna|venna) epa\b|\bjeewithe epa\b)",
-    ),
     (
         RiskLevel.HIGH,
         "talks about self-harm",
         r"\b(self[- ]?harm|cut(ting)? myself|hurt(ing)? myself|burn(ing)? myself)\b",
+    ),
+    # Sinhala, in script and romanised ("Singlish"). Figures of speech such as "විභාගේ මාව මරනවා"
+    # (the exam is killing me) or "හිනා වෙලා මැරෙනවා" (dying of laughter) deliberately don't match.
+    (
+        RiskLevel.IMMINENT,
+        "mentions a plan, method or timing (Sinhala)",
+        r"(වහ බොන්න|පෙති ගොඩක් (බොන්න|බිව්වා|බීලා)|සදහටම සමු|අද (රෑ|රෑට) .*(මැරෙන්න|මරාගන්න)"
+        r"|\bwaha (bonna|biwwa)\b|\bpethi godak (bonna|biwwa|beela)\b|\bsadahatama samu"
+        r"|\bada (ra|raa|reta|rata)\b.*\b(marenna|maraganna|mara ganna)\b)",
+    ),
+    (
+        RiskLevel.HIGH,
+        "talks about suicide or dying (Sinhala)",
+        r"(සියදිවි|සිය දිවි|මැරෙන්න (හිතෙනවා|ඕනේ|ඕන|හිතුණා)|මැරිලා යන්න|මරා ?ගන්න|ජීවිතේ නැති කර"
+        r"|ජීවත් වෙන්න (ඕනේ|ඕන) නෑ|මැරුණොත් හොඳයි|තුවාල කර ගන්න|අත කපා ?ගත්තා"
+        r"|\bsiya ?di[wv]i|\bmarenna (hithenawa|hithenwa|hithuna|one|ona|oney)\b|\bmarila yanna\b"
+        r"|\bmara ?ganna\b|\bjeewithe nathi kara|\bjeewath (wenna|venna) (one|ona) na\b"
+        r"|\bmarunoth hondai\b|\batha kapa ?gaththa\b)",
+    ),
+    (
+        RiskLevel.MODERATE,
+        "hopeless or tired of living (Sinhala)",
+        r"(ජීවත් වෙන්න එපා|ජීවිතේ එපා|බලාපොරොත්තුවක් නෑ|හැමෝටම බරක්|කිසිම තේරුමක් නෑ"
+        r"|\bjeewath (wenna|venna) epa\b|\bjeewithe epa\b|\bbalaporoththuwak na\b|\bhamotama barak\b)",
     ),
     (
         RiskLevel.MODERATE,

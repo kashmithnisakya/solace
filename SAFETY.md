@@ -23,6 +23,9 @@ These rules apply to every change. A pull request that weakens them will not be 
 - [x] Red-team evaluation of crisis conversations, including indirect and coded language (first version: `python -m evals`, [baseline](docs/safety/2026-11-26-baseline.md))
 - [ ] The evaluation datasets reviewed and extended by a mental-health professional, and run before every release with a PASS
 - [ ] Every note in `solace/knowledge/library/` reviewed for accuracy and safety by a professional (and faith notes by someone from that tradition)
+- [ ] Sinhala reviewed by native speakers: interface text, crisis wording, keyword phrases, and how faith comes up in Sinhala replies
+- [ ] Sinhala voice tested with real speech (transcription has no Sinhala language code; it auto-detects with a hint)
+- [ ] Sinhala-speaking counsellors available for hand-off
 - [x] Human counsellor hand-off in place (first version)
 - [ ] Counsellors vetted, trained and supervised, with an agreed escalation process for imminent risk
 - [ ] A staffing plan so requests are answered, and honest wording when no one is online

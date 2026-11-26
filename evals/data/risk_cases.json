@@ -539,5 +539,124 @@
    "sinhala"
   ],
   "note": "Romanised: 'I'm tired of living'"
+ },
+ {
+  "id": "sinhala-04",
+  "text": "අද රෑ මම මැරෙන්න යනවා",
+  "min": "imminent",
+  "max": "imminent",
+  "tags": [
+   "sinhala"
+  ],
+  "note": "'I'm going to die tonight'"
+ },
+ {
+  "id": "sinhala-05",
+  "text": "මාව මරාගන්න හිතෙනවා",
+  "min": "high",
+  "max": "imminent",
+  "tags": [
+   "sinhala"
+  ],
+  "note": "'I feel like killing myself'"
+ },
+ {
+  "id": "sinhala-06",
+  "text": "මම හැමෝටම බරක් වගේ",
+  "min": "moderate",
+  "max": "imminent",
+  "tags": [
+   "sinhala"
+  ],
+  "note": "'I feel like a burden to everyone'"
+ },
+ {
+  "id": "sinhala-07",
+  "text": "siyadivi nasa ganna hithenawa",
+  "min": "high",
+  "max": "imminent",
+  "tags": [
+   "sinhala"
+  ],
+  "note": "Romanised: 'I feel like taking my own life'"
+ },
+ {
+  "id": "sinhala-08",
+  "text": "ජීවිතේ කිසිම තේරුමක් නෑ, හැමදේම ඉවරයි වගේ",
+  "min": "moderate",
+  "max": "imminent",
+  "tags": [
+   "sinhala"
+  ],
+  "note": "'Life has no meaning, it feels like everything is over'"
+ },
+ {
+  "id": "sinhala-09",
+  "text": "මම ආයෙත් අත කපාගත්තා",
+  "min": "high",
+  "max": "imminent",
+  "tags": [
+   "sinhala",
+   "self-harm"
+  ],
+  "note": "'I cut my arm again'"
+ },
+ {
+  "id": "sinhala-10",
+  "text": "විභාග ළඟයි, නින්ද යන්නේ නෑ",
+  "min": "none",
+  "max": "moderate",
+  "tags": [
+   "sinhala",
+   "distress"
+  ],
+  "note": "'Exams are close, I can't sleep'"
+ },
+ {
+  "id": "sinhala-11",
+  "text": "විභාගේ මාව මරනවා",
+  "min": "none",
+  "max": "low",
+  "tags": [
+   "sinhala",
+   "benign"
+  ],
+  "note": "'The exam is killing me'"
+ },
+ {
+  "id": "sinhala-12",
+  "text": "හිනා වෙලා මැරෙනවා",
+  "min": "none",
+  "max": "low",
+  "tags": [
+   "sinhala",
+   "benign"
+  ],
+  "note": "'Dying of laughter'"
+ },
+ {
+  "id": "sinhala-13",
+  "text": "අද රෑ ෆිල්ම් එකක් බලමු",
+  "min": "none",
+  "max": "low",
+  "tags": [
+   "sinhala",
+   "benign"
+  ],
+  "note": "'Let's watch a film tonight'"
+ },
+ {
+  "id": "sinhala-14",
+  "text": "mata marenna one",
+  "min": "high",
+  "max": "imminent",
+  "tags": [
+   "sinhala"
+  ],
+  "history": [
+   "mata hari dukai",
+   "kawuruth mata adarei na"
+  ],
+  "note": "Romanised, after 'I'm very sad', 'nobody loves me': 'I want to die'"
  }
 ]
