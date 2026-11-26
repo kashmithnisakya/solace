@@ -35,13 +35,25 @@
   button { font: inherit; border: 0; border-radius: 12px; padding: 0 18px; background: var(--accent); color: #fff; cursor: pointer; }
   button:disabled { opacity: .5; cursor: default; }
   .typing { color: var(--muted); font-style: italic; }
+  .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); padding: 6px 12px; font-size: .9rem; }
+  #mapPanel { display: none; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin: 8px 0; overflow: hidden; }
+  #mapPanel.open { display: block; }
+  #map { height: 320px; }
+  .mapinfo { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 12px; font-size: .82rem; color: var(--muted); border-top: 1px solid var(--border); }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
+  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .empty { padding: 24px; text-align: center; color: var(--muted); font-size: .9rem; }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
     <h1>Solace</h1>
-    <label>Include faith:
+    <div class="tools">
+    <button class="ghost" id="mapBtn" type="button" aria-expanded="false" aria-controls="mapPanel">My map</button>
+    <button class="ghost" id="forgetBtn" type="button">Forget me</button>
+    <label>Faith:
       <select id="faith" aria-label="Include faith in the conversation">
         <option value="">None</option>
         <option value="buddhism">Buddhism</option>
@@ -50,7 +62,19 @@
         <option value="christianity">Christianity</option>
       </select>
     </label>
+    </div>
   </header>
+  <section id="mapPanel" aria-label="Map of what you have shared">
+    <div id="map"></div>
+    <div class="mapinfo">
+      <div class="legend">
+        <span><i style="background:#c0634f"></i>issue</span><span><i style="background:#c99a3c"></i>feeling</span>
+        <span><i style="background:#8a6fb0"></i>trigger</span><span><i style="background:#5b84b1"></i>person</span>
+        <span><i style="background:#4f9a72"></i>support</span><span><i style="background:#3f8f9a"></i>strength</span>
+      </div>
+      <div id="coverage"></div>
+    </div>
+  </section>
   <p class="notice">Solace is an AI companion, not a therapist or doctor. If you are in danger, call
     <strong>1926</strong> (Sri Lanka, 24/7) or your local emergency number.</p>
   <div id="log" aria-live="polite">
@@ -61,7 +85,63 @@
     <button id="send">Send</button>
   </form>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
 <script>
+  const COLORS = { issue: "#c0634f", emotion: "#c99a3c", trigger: "#8a6fb0", person: "#5b84b1", support: "#4f9a72", strength: "#3f8f9a" };
+  const mapPanel = document.getElementById("mapPanel");
+  const mapBtn = document.getElementById("mapBtn");
+  let lastGraph = { nodes: [], edges: [], domains: {} };
+  let cy = null;
+
+  function drawMap() {
+    if (!mapPanel.classList.contains("open")) return;
+    const el = document.getElementById("map");
+    const g = lastGraph;
+    document.getElementById("coverage").textContent =
+      `Areas understood: ${Object.keys(g.domains || {}).length} of 11`;
+    if (!g.nodes.length) {
+      if (cy) { cy.destroy(); cy = null; }
+      el.innerHTML = '<div class="empty">Your map will grow as you share. Only you can see it.</div>';
+      return;
+    }
+    if (typeof cytoscape === "undefined") {
+      el.innerHTML = '<div class="empty">' + g.nodes.map(n => n.label).join(" · ") + "</div>";
+      return;
+    }
+    el.innerHTML = "";
+    const text = getComputedStyle(document.body).getPropertyValue("--text").trim();
+    const elements = [
+      ...g.nodes.map(n => ({ data: { id: n.id, label: n.label, type: n.type, size: 26 + Math.min(n.mentions, 5) * 6 + n.severity * 6 } })),
+      ...g.edges.map(e => ({ data: { id: `${e.source}>${e.target}>${e.relation}`, source: e.source, target: e.target, label: e.relation.replace("_", " ") } })),
+    ];
+    if (cy) cy.destroy();
+    cy = cytoscape({
+      container: el, elements, wheelSensitivity: 0.2,
+      style: [
+        { selector: "node", style: { "background-color": n => COLORS[n.data("type")] || "#888", width: "data(size)", height: "data(size)",
+            label: "data(label)", color: text, "font-size": 11, "text-valign": "bottom", "text-margin-y": 4, "text-wrap": "wrap", "text-max-width": 90 } },
+        { selector: "edge", style: { width: 1.5, "line-color": "#9aa0a6", "target-arrow-color": "#9aa0a6", "target-arrow-shape": "triangle",
+            "curve-style": "bezier", label: "data(label)", "font-size": 9, color: "#9aa0a6", "text-rotation": "autorotate" } },
+      ],
+      layout: { name: "cose", animate: false, padding: 24, nodeRepulsion: 9000 },
+    });
+  }
+
+  mapBtn.addEventListener("click", () => {
+    const open = mapPanel.classList.toggle("open");
+    mapBtn.setAttribute("aria-expanded", open);
+    drawMap();
+  });
+
+  document.getElementById("forgetBtn").addEventListener("click", async () => {
+    if (!confirm("Delete this whole conversation and your map? This cannot be undone.")) return;
+    if (sessionId) await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+    sessionId = null; shownHelp = false;
+    lastGraph = { nodes: [], edges: [], domains: {} };
+    log.innerHTML = '<div class="msg bot">Everything has been deleted. I\'m still here if you want to talk.</div>';
+    drawMap();
+  });
+
   const log = document.getElementById("log");
   const form = document.getElementById("form");
   const input = document.getElementById("input");
@@ -115,6 +195,8 @@
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       sessionId = data.session_id;
+      lastGraph = data.graph;
+      drawMap();
       typing.remove();
       add("msg bot", data.reply);
       const crisis = data.risk_level === "high" || data.risk_level === "imminent";

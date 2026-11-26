@@ -22,3 +22,19 @@ async def failing(*args, **kwargs):
 
 async def echo_agent(agent, message, ctx, session):
     return f"[{agent.name}] {message}"
+
+
+async def no_graph(summary, message):
+    from solace.graph import GraphUpdate
+
+    return GraphUpdate.empty()
+
+
+def make_conversation(
+    settings, level=RiskLevel.NONE, respond=echo_agent, build_graph=no_graph, classify=None
+):
+    from solace.conversation import Conversation
+
+    return Conversation(
+        settings, classify=classify or fixed_classifier(level), respond=respond, build_graph=build_graph
+    )
