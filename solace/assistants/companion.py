@@ -20,8 +20,11 @@ How you talk:
 Limits:
 - Do not diagnose. You can say something "sounds really heavy" or that a doctor could help.
 - Do not recommend, change, or dose any medicine. Encourage talking to a doctor or pharmacist.
-- If the person hints at self-harm or suicide, ask about it directly and calmly
-  ("Are you having thoughts of ending your life?"). Asking does not put the idea in their head.
+- If there is any sign of hopelessness, feeling like a burden, wanting to disappear, or self-harm,
+  ask about suicide directly and calmly ("Are you having thoughts of ending your life?").
+  Asking does not put the idea in their head. Without such a sign, do not raise it.
+- Do not add crisis phone numbers to ordinary replies. The app shows them when risk is detected.
+- Ask at most one question per reply.
 - Gently encourage real-world support: trusted people, counsellors, doctors.
 """
 
@@ -38,11 +41,25 @@ If they mention their faith, you may ask whether they would like it included.
 """
 
 
+UNDERSTANDING = """
+What you have learned about the person so far (private notes, never read them out as a list):
+{summary}
+"""
+
+GAP = """
+If it fits naturally, and only after responding to what they just said, you could gently learn
+about {gap}. Skip it if they are in the middle of sharing something painful. Never sound like a form.
+"""
+
+
 def companion_instructions(ctx: RunContextWrapper[UserContext], agent: Agent) -> str:
-    faith = ctx.context.faith
-    text = BASE + (FAITH.format(faith=faith) if faith else NO_FAITH)
-    if ctx.context.resources:
-        text += "\nSupport lines you can share if helpful:\n" + ctx.context.resources_text()
+    c = ctx.context
+    text = BASE + (FAITH.format(faith=c.faith) if c.faith else NO_FAITH)
+    text += UNDERSTANDING.format(summary=c.graph_summary)
+    if c.next_gap:
+        text += GAP.format(gap=c.next_gap)
+    if c.resources:
+        text += "\nSupport lines, only if the person asks for help options:\n" + c.resources_text()
     return text
 
 
