@@ -75,6 +75,39 @@ function telHref(contact) {
   return digits.length >= 3 ? `tel:${digits}` : null;
 }
 
+/* Citations: replies mark ideas from the knowledge base like [1]. We hide the markers and show
+   the sources the reply actually used, as small links under the bubble. */
+const MARKER = /\s?\[(\d+(?:\s*,\s*\d+)*)\]/g;
+const PARTIAL_MARKER = /\s?\[[\d,\s]*$/; // a marker still arriving mid-stream
+
+function cleanReply(raw, streaming = false) {
+  const text = raw.replace(MARKER, "");
+  return streaming ? text.replace(PARTIAL_MARKER, "") : text;
+}
+
+function citedSources(raw, sources) {
+  const cited = new Set();
+  for (const m of raw.matchAll(MARKER)) m[1].split(",").forEach((n) => cited.add(Number(n)));
+  const seen = new Set();
+  return sources.filter((s) => cited.has(s.n) && !seen.has(s.url) && seen.add(s.url));
+}
+
+function addSources(sources) {
+  if (!sources.length) return;
+  const box = el("div", "sources");
+  box.appendChild(el("span", "sources-label", "Sources"));
+  for (const s of sources) {
+    const a = el("a", "source", s.title);
+    a.href = s.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.title = s.source;
+    box.appendChild(a);
+  }
+  thread.appendChild(box);
+  scrollToEnd();
+}
+
 function addCareCard(resources, urgent) {
   const card = el("section", "care");
   card.setAttribute("aria-label", "Support lines");
@@ -140,10 +173,13 @@ async function send(message) {
   const typing = typingBubble();
   let bubble = null;
   let crisis = false;
+  let raw = "";
+  let sources = [];
 
   const write = (text) => {
     if (!bubble) { typing.remove(); bubble = addBubble("assistant", ""); }
-    bubble.textContent += text;
+    raw += text;
+    bubble.textContent = cleanReply(raw, true);
     scrollToEnd(false);
   };
 
@@ -185,10 +221,13 @@ async function send(message) {
           state.resources = ev.resources;
         } else if (ev.type === "done") {
           state.graph = ev.graph;
+          sources = ev.sources || [];
         }
       }
     }
     if (!bubble) write("I'm here.");
+    bubble.textContent = cleanReply(raw);
+    addSources(citedSources(raw, sources));
     if (state.resources.length && (crisis || !state.shownCare)) {
       addCareCard(state.resources, crisis);
       state.shownCare = true;

@@ -31,6 +31,7 @@ solace/
 ├── api.py               HTTP routes
 ├── conversation.py      per-message flow: risk screen → pick agent → reply + graph update
 ├── voice.py             Realtime voice: short-lived keys, spoken instructions
+├── knowledge/           knowledge search + citations; library/*.md are the notes
 ├── assessment.py        picks the next life area worth gently asking about
 ├── assistants/          agent definitions and prompts (companion, crisis, classifier, graph_builder)
 ├── graph/               issue graph models and SQLite store
@@ -51,6 +52,8 @@ docs/ROADMAP.md          phases and status
 7. When you find a risky phrase the keyword screen misses, add it to `tests/test_screen.py`.
 8. Voice follows the same rules: every user transcript goes through `/api/voice/turn` (`Conversation.voice_user`).
    Never give the browser the real API key; it only gets short-lived keys from `/api/voice/session`.
+9. Knowledge notes are written in our own words with a working source `url`; never paste copyrighted text.
+   Never add method or dose information. The Crisis agent never receives knowledge notes.
 
 ## Code conventions
 

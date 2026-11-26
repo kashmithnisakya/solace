@@ -16,6 +16,7 @@
 - **Switches to crisis mode** when risk is high. It stays calm, asks about safety directly, and connects the person to crisis lines and real people. If the AI fails, a fixed safety message is sent instead, so a person in crisis never sees an error.
 - **Builds a private map (issue graph)** of what the person is going through: issues, feelings, triggers, people and supports, and how they connect. It uses roles, never names.
 - **Asks gentle questions to fill gaps** (when it started, sleep, support, daily life and more). These are loosely guided by PHQ-9 / GAD-7, one at a time, never like a form, and never during a crisis.
+- **Draws on trusted knowledge, with sources.** A small library of notes on sleep, stress, anxiety, panic, low mood, grief, loneliness, anger, exam stress, self-harm urges and getting help (from WHO and NHS guidance), plus opt-in comfort from Buddhist, Hindu, Islamic and Christian teaching. Solace uses at most one idea at a time, in its own words, only when it helps, and shows tappable sources under the reply.
 - **Lets the person delete everything** with one button.
 - **Includes faith only if the person chooses it** (Buddhism, Hinduism, Islam, Christianity, or none).
 - Never diagnoses, and never gives medication advice.
@@ -69,6 +70,10 @@ message ─► keyword screen ─┐
 message ─► Graph Builder agent (in parallel) ─► issue graph (SQLite)
 ```
 
+For each message, the knowledge base is searched while the risk check runs (so it adds no waiting). Close
+matches are given to the Companion as notes; the Crisis agent never gets them, so crisis replies stay focused on safety.
+Replies mark ideas they took from a note like `[1]`; the app hides the markers and shows those sources as links.
+
 Voice calls use the same rules. The browser streams audio directly to the OpenAI Realtime API (our server never
 relays audio and never shares the real API key). Each finished transcript of what the person said goes through the
 same risk checks. If risk becomes high, the browser stops the current spoken reply and Solace answers again in
@@ -81,6 +86,7 @@ solace/
 ├── api.py              FastAPI app
 ├── conversation.py     safety-first routing between agents (text and voice)
 ├── voice.py            Realtime voice: short-lived keys and spoken instructions
+├── knowledge/          knowledge base search and citations; library/ holds the notes (Markdown)
 ├── assessment.py       picks the next area worth gently asking about
 ├── graph/              issue graph models and storage
 ├── config.py           settings from .env
@@ -90,9 +96,28 @@ solace/
 tests/                  unit tests, including crisis-phrase test cases
 ```
 
+## Adding knowledge
+
+Add a Markdown file to `solace/knowledge/library/`, written in your own words (never paste copyrighted text), with front matter:
+
+```markdown
+---
+title: Coping with exam stress
+source: NHS, "Tips on preparing for exams"
+url: https://www.nhs.uk/...
+topic: study
+faith: islam          # only for faith notes; used only when the person chooses that faith
+---
+## A short section heading
+One focused idea per section, a few sentences long.
+```
+
+New sections are embedded automatically on the next start (embeddings are cached in the database).
+Knowledge content needs the same professional review as prompts.
+
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a knowledge base (psychology, faith and health sources), a platform with human counselors, and Sinhala support.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a platform with human counselors, and Sinhala support.
 
 ## Development
 

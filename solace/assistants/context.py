@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from solace.knowledge import Passage
 from solace.safety import Resource
 
 
@@ -15,6 +16,10 @@ class UserContext:
     graph_summary: str = "Nothing known yet."
     # One area worth gently asking about next, or None.
     next_gap: str | None = None
+    # Knowledge base notes relevant to this message (never used in crisis mode).
+    knowledge: list[Passage] = field(default_factory=list)
+    # True in voice calls: no citation markers in speech.
+    spoken: bool = False
 
     def resources_text(self) -> str:
         return "\n".join(f"- {r.name}: {r.contact} ({r.description})" for r in self.resources)
