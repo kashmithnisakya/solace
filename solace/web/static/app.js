@@ -210,7 +210,11 @@ function autoGrow() {
   input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
 }
 function updateSendState() {
-  sendBtn.disabled = state.busy || !input.value.trim();
+  const hasText = Boolean(input.value.trim());
+  sendBtn.disabled = state.busy || !hasText;
+  // Like Messages: the voice button sits where Send goes until you start typing.
+  sendBtn.hidden = !hasText;
+  $("voiceBtn").hidden = hasText;
 }
 input.addEventListener("input", () => { autoGrow(); updateSendState(); });
 input.addEventListener("keydown", (e) => {
@@ -231,7 +235,7 @@ $("composer").addEventListener("submit", (e) => {
 /* ---------- sheets ---------- */
 function openSheet(d) { d.showModal(); }
 document.querySelectorAll("dialog").forEach((d) => {
-  d.addEventListener("click", (e) => { if (e.target === d && d.id !== "welcome") d.close(); }); // tap outside
+  d.addEventListener("click", (e) => { if (e.target === d && d.id !== "welcome" && d.id !== "callSheet") d.close(); }); // tap outside
   d.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => d.close()));
 });
 
@@ -354,6 +358,303 @@ $("mapBtn").addEventListener("click", () => {
   openSheet($("mapSheet"));
   requestAnimationFrame(drawMap);
 });
+
+/* ---------- voice call ---------- */
+/*
+ * The browser talks to OpenAI's Realtime API directly over WebRTC (audio never passes through our
+ * server). Our server hands out a short-lived key, then screens every finished transcript for risk
+ * and tells us when to switch Solace into crisis mode mid-call.
+ */
+const call = {
+  pc: null, dc: null, mic: null, audio: null, ctx: null, raf: 0, tick: 0,
+  startedAt: 0, crisis: false, muted: false, active: false,
+  pending: new Map(), // user item_id -> { bubble, done: Promise, resolve }
+  replies: new Map(), // response_id -> assistant bubble
+  caption: "",
+};
+
+const callStatus = (text) => { $("callStatus").textContent = text; };
+// Live captions follow the latest words, starting at a sentence when the reply gets long.
+function setCaption(text) {
+  let shown = text.replace(/\s+/g, " ").trim();
+  if (shown.length > 150) {
+    const tail = shown.slice(-150);
+    const start = tail.search(/[.!?]\s+\S/);
+    shown = start >= 0 ? tail.slice(start + 1).trim() : `…${tail.trim()}`;
+  }
+  $("captions").textContent = shown;
+}
+
+function addNotice(text) {
+  thread.appendChild(el("div", "notice", text));
+  scrollToEnd();
+}
+
+function fmtTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function showCallCare(resources) {
+  if (!resources?.length) return;
+  const list = $("callCareList");
+  list.replaceChildren();
+  for (const r of resources.slice(0, 3)) {
+    const href = telHref(r.contact);
+    if (!href) continue;
+    const a = el("a", "pill", `Call ${r.name.split(" (")[0]}`);
+    a.href = href;
+    a.setAttribute("aria-label", `Call ${r.name}, ${r.contact}`);
+    list.appendChild(a);
+  }
+  $("callCare").hidden = !list.children.length;
+  $("callSheet").classList.toggle("care-on", !$("callCare").hidden);
+}
+
+function sendEvent(ev) {
+  if (call.dc?.readyState === "open") call.dc.send(JSON.stringify(ev));
+}
+
+async function postTurn(role, text) {
+  const res = await fetch("/api/voice/turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: state.sessionId, role, text, faith: state.faith || null }),
+  });
+  return res.status === 200 ? res.json() : null;
+}
+
+async function onUserTranscript(itemId, text) {
+  const p = call.pending.get(itemId);
+  const words = (text || "").trim();
+  if (p) {
+    if (words) p.bubble.textContent = words; else p.bubble.remove();
+  } else if (words) {
+    addBubble("user", words);
+  }
+  try {
+    if (!words) return;
+    const turn = await postTurn("user", words);
+    if (!turn || !call.active) return;
+    state.resources = turn.resources;
+    sendEvent({ type: "session.update", session: { type: "realtime", instructions: turn.instructions } });
+    if (turn.in_crisis && !call.crisis) {
+      // Risk found: stop whatever ordinary reply is playing and answer again in crisis mode.
+      sendEvent({ type: "response.cancel" });
+      sendEvent({ type: "output_audio_buffer.clear" });
+      sendEvent({ type: "response.create" });
+      addCareCard(turn.resources, true);
+      state.shownCare = true;
+    }
+    call.crisis = turn.in_crisis;
+    if (turn.resources.length) showCallCare(turn.resources);
+  } catch { /* the call carries on; the transcript just isn't saved */ } finally {
+    p?.resolve();
+    call.pending.delete(itemId);
+  }
+}
+
+async function onAssistantTranscript(text, responseId) {
+  const words = (text || "").trim();
+  if (!words) return;
+  call.replies.set(responseId, addBubble("assistant", words));
+  // Save in order: wait until what the person said before this has been saved.
+  await Promise.all([...call.pending.values()].map((p) => p.done));
+  try { await postTurn("assistant", words); } catch { /* ignore */ }
+}
+
+function onRealtimeEvent(msg) {
+  let ev;
+  try { ev = JSON.parse(msg.data); } catch { return; }
+  switch (ev.type) {
+    case "input_audio_buffer.speech_started":
+      callStatus(call.muted ? "Muted" : "Listening…");
+      break;
+    case "input_audio_buffer.committed": {
+      // Hold this message's place in the thread, so the order stays right if transcription is slow.
+      const bubble = addBubble("user", "…");
+      let resolve;
+      const done = new Promise((r) => { resolve = r; });
+      call.pending.set(ev.item_id, { bubble, done, resolve });
+      break;
+    }
+    case "conversation.item.input_audio_transcription.completed":
+      onUserTranscript(ev.item_id, ev.transcript);
+      break;
+    case "conversation.item.input_audio_transcription.failed":
+      onUserTranscript(ev.item_id, "");
+      break;
+    case "response.created":
+      call.caption = "";
+      break;
+    case "response.output_audio_transcript.delta":
+      call.caption += ev.delta || "";
+      callStatus("Speaking");
+      setCaption(call.caption);
+      break;
+    case "response.output_audio_transcript.done":
+      onAssistantTranscript(ev.transcript, ev.response_id);
+      break;
+    case "response.done": {
+      // Interrupted replies (the person spoke over Solace, or a crisis switch) show where they stopped.
+      const bubble = call.replies.get(ev.response?.id);
+      if (bubble && ev.response.status !== "completed") bubble.textContent += "…";
+      call.replies.delete(ev.response?.id);
+      callStatus(call.muted ? "Muted" : "Listening");
+      break;
+    }
+    case "error":
+      if (ev.error?.code !== "response_cancel_not_active") console.warn("voice:", ev.error?.message);
+      break;
+    default:
+  }
+}
+
+function level(analyser, buf) {
+  analyser.getByteTimeDomainData(buf);
+  let sum = 0;
+  for (const v of buf) { const x = (v - 128) / 128; sum += x * x; }
+  return Math.min(1, Math.sqrt(sum / buf.length) * 4);
+}
+
+function animateLevels(remote) {
+  try {
+    call.ctx = new AudioContext();
+    const make = (stream) => {
+      const a = call.ctx.createAnalyser();
+      a.fftSize = 512;
+      call.ctx.createMediaStreamSource(stream).connect(a);
+      return [a, new Uint8Array(a.fftSize)];
+    };
+    const [out, outBuf] = make(remote);
+    const [mic, micBuf] = make(call.mic);
+    const orb = $("orb");
+    const halo = $("orbHalo");
+    const frame = () => {
+      orb.style.setProperty("--level", level(out, outBuf).toFixed(3));
+      halo.style.setProperty("--mic", call.muted ? "0" : level(mic, micBuf).toFixed(3));
+      call.raf = requestAnimationFrame(frame);
+    };
+    frame();
+  } catch { /* the orb just stays still */ }
+}
+
+async function startCall() {
+  if (call.active) return;
+  if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) {
+    addNotice("Voice isn't supported in this browser. You can keep typing, I'm here.");
+    return;
+  }
+  Object.assign(call, { active: true, crisis: false, muted: false, caption: "", pending: new Map(), replies: new Map() });
+  $("muteBtn").setAttribute("aria-pressed", "false");
+  $("callCare").hidden = true;
+  $("callSheet").classList.remove("care-on");
+  $("callTimer").textContent = "0:00";
+  callStatus("Connecting…");
+  setCaption("Speak whenever you're ready.");
+  $("callSheet").showModal();
+
+  try {
+    call.mic = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch {
+    endCall(false);
+    addNotice("Solace needs microphone access for voice. You can allow it in your browser settings, or keep typing.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/voice/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: state.sessionId, faith: state.faith || null }),
+    });
+    if (res.status === 429) {
+      const body = await res.json();
+      endCall(false);
+      addBubble("assistant", body.message);
+      addCareCard(body.resources, false);
+      return;
+    }
+    if (!res.ok) throw new Error(String(res.status));
+    const session = await res.json();
+    if (!call.active) return;
+    state.sessionId = session.session_id;
+    store.set("solace.session", session.session_id);
+
+    const pc = new RTCPeerConnection();
+    call.pc = pc;
+    call.audio = new Audio();
+    call.audio.autoplay = true;
+    pc.ontrack = (e) => {
+      call.audio.srcObject = e.streams[0];
+      animateLevels(e.streams[0]);
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        if (call.active) { endCall(); addNotice("The call dropped. You can start it again, or keep typing."); }
+      }
+    };
+    pc.addTrack(call.mic.getAudioTracks()[0], call.mic);
+
+    call.dc = pc.createDataChannel("oai-events");
+    call.dc.onmessage = onRealtimeEvent;
+    call.dc.onopen = () => {
+      call.startedAt = Date.now();
+      call.tick = setInterval(() => { $("callTimer").textContent = fmtTime(Date.now() - call.startedAt); }, 500);
+      callStatus("Listening");
+      addStamp();
+      // Solace picks up like a friend answering the phone.
+      sendEvent({ type: "response.create" });
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const answer = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST",
+      body: offer.sdp,
+      headers: { Authorization: `Bearer ${session.client_secret}`, "Content-Type": "application/sdp" },
+    });
+    if (!answer.ok) throw new Error(String(answer.status));
+    if (!call.active) return;
+    await pc.setRemoteDescription({ type: "answer", sdp: await answer.text() });
+  } catch {
+    endCall(false);
+    addNotice("I couldn't start a voice call just now. You can keep typing, or try again in a moment.");
+  }
+}
+
+function endCall(summary = true) {
+  if (!call.active) return;
+  call.active = false;
+  const duration = call.startedAt ? Date.now() - call.startedAt : 0;
+  clearInterval(call.tick);
+  cancelAnimationFrame(call.raf);
+  try { call.dc?.close(); } catch { /* ignore */ }
+  try { call.pc?.close(); } catch { /* ignore */ }
+  call.mic?.getTracks().forEach((t) => t.stop());
+  call.ctx?.close().catch(() => {});
+  if (call.audio) call.audio.srcObject = null;
+  for (const p of call.pending.values()) { if (p.bubble.textContent === "…") p.bubble.remove(); p.resolve(); }
+  Object.assign(call, { pc: null, dc: null, mic: null, audio: null, ctx: null, startedAt: 0 });
+  if ($("callSheet").open) $("callSheet").close();
+  if (summary && duration > 0) addNotice(`Voice call · ${fmtTime(duration)}`);
+}
+
+function toggleMute() {
+  call.muted = !call.muted;
+  call.mic?.getAudioTracks().forEach((t) => { t.enabled = !call.muted; });
+  $("muteBtn").setAttribute("aria-pressed", String(call.muted));
+  $("muteBtn").setAttribute("aria-label", call.muted ? "Unmute" : "Mute");
+  callStatus(call.muted ? "Muted" : "Listening");
+}
+
+$("voiceBtn").addEventListener("click", startCall);
+$("endBtn").addEventListener("click", () => endCall());
+$("muteBtn").addEventListener("click", toggleMute);
+$("callSheet").addEventListener("cancel", (e) => { e.preventDefault(); endCall(); });
+window.addEventListener("pagehide", () => endCall(false));
 
 /* ---------- boot ---------- */
 fetch("/api/resources").then((r) => r.json()).then((r) => { state.allResources = r; }).catch(() => {});

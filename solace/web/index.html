@@ -34,7 +34,10 @@
 <form class="composer" id="composer" autocomplete="off">
   <div class="field">
     <textarea id="input" rows="1" placeholder="Message" aria-label="Message" maxlength="4000" enterkeyhint="send"></textarea>
-    <button class="send" id="send" type="submit" aria-label="Send" disabled>
+    <button class="voice-btn" id="voiceBtn" type="button" aria-label="Talk with Solace by voice">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>
+    </button>
+    <button class="send" id="send" type="submit" aria-label="Send" disabled hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg>
     </button>
   </div>
@@ -94,6 +97,39 @@
     </ul>
     <p class="group-note">Deletes your messages and your map from Solace. This can't be undone.</p>
   </div>
+</dialog>
+
+<!-- Voice call -->
+<dialog class="call" id="callSheet" aria-labelledby="callName">
+  <div class="call-top">
+    <p class="call-status" id="callStatus" aria-live="polite">Connecting…</p>
+    <h2 class="call-name" id="callName">Solace</h2>
+    <p class="call-timer" id="callTimer">0:00</p>
+  </div>
+  <div class="orb-wrap" aria-hidden="true">
+    <div class="orb-halo" id="orbHalo"></div>
+    <div class="orb" id="orb"></div>
+  </div>
+  <p class="captions" id="captions" aria-live="polite">Speak whenever you're ready.</p>
+  <section class="call-care" id="callCare" hidden aria-label="Support lines">
+    <p>You can talk to a real person right now. Free and confidential.</p>
+    <div class="call-care-list" id="callCareList"></div>
+  </section>
+  <div class="call-controls">
+    <div class="ctl">
+      <button class="round" id="muteBtn" type="button" aria-pressed="false" aria-label="Mute">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/><path class="slash" d="M4 4l16 16"/></svg>
+      </button>
+      <span>mute</span>
+    </div>
+    <div class="ctl">
+      <button class="round end" id="endBtn" type="button" aria-label="End call">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 14.2c4.7-4.3 12.3-4.3 17 0l-1.9 2.3a1 1 0 0 1-1.3.2l-2.4-1.5a1 1 0 0 1-.5-.9v-1.6a12 12 0 0 0-4.8 0v1.6a1 1 0 0 1-.5.9l-2.4 1.5a1 1 0 0 1-1.3-.2z"/></svg>
+      </button>
+      <span>end</span>
+    </div>
+  </div>
+  <p class="call-note">Solace is an AI. Your voice is processed by OpenAI to hold the conversation.</p>
 </dialog>
 
 <!-- Confirm -->

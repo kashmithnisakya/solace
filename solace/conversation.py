@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agents import Agent, Runner, SQLiteSession
+from agents import Agent, RunContextWrapper, Runner, SQLiteSession
 from openai.types.responses import ResponseTextDeltaEvent
 from pydantic import BaseModel
 
@@ -27,6 +27,7 @@ from solace.assistants.graph_builder import build_graph_builder, builder_input
 from solace.config import Settings
 from solace.graph import GraphStore, GraphUpdate, IssueGraph
 from solace.safety import Resource, RiskAssessment, RiskLevel, combine, keyword_screen, resources_for
+from solace.voice import voice_instructions
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +59,13 @@ class Reply(TurnInfo):
 class Message(BaseModel):
     role: str  # "user" or "assistant"
     text: str
+
+
+class VoiceTurn(TurnInfo):
+    """What the browser needs after a spoken message: risk, and the instructions to use from now on."""
+
+    in_crisis: bool
+    instructions: str
 
 
 @dataclass
@@ -105,11 +113,18 @@ class Conversation:
         else:
             self._stream = self._llm_stream
         self._last_level: dict[str, RiskLevel] = {}
+        self._memory_sessions: dict[str, SQLiteSession] = {}
+        self._background: set[asyncio.Task] = set()
         if settings.solace_db_path != ":memory:":
             Path(settings.solace_db_path).parent.mkdir(parents=True, exist_ok=True)
         self.graphs = GraphStore(settings.solace_db_path)
 
     def session(self, session_id: str) -> SQLiteSession:
+        if self.settings.solace_db_path == ":memory:":
+            # Each in-memory SQLiteSession is its own database, so keep one per conversation.
+            if session_id not in self._memory_sessions:
+                self._memory_sessions[session_id] = SQLiteSession(session_id)
+            return self._memory_sessions[session_id]
         return SQLiteSession(session_id, self.settings.solace_db_path)
 
     # ---------- public API ----------
@@ -160,6 +175,40 @@ class Conversation:
         self.graphs.delete(session_id)
         self._last_level.pop(session_id, None)
 
+    # ---------- voice ----------
+
+    async def voice_start(self, session_id: str, faith: str | None = None) -> str:
+        """Instructions for a new voice call, carrying on from wherever the conversation is."""
+        graph = self.graphs.load(session_id)
+        in_crisis = self._last_level.get(session_id, RiskLevel.NONE) >= RiskLevel.HIGH
+        agent = self.crisis if in_crisis else self.companion
+        return await self._spoken(agent, self._context(graph, in_crisis, faith), session_id, opening=True)
+
+    async def voice_user(self, session_id: str, text: str, faith: str | None = None) -> VoiceTurn:
+        """A finished user transcript: screen it, save it, and return the instructions to use next."""
+        turn = await self._prepare(session_id, text, faith)
+        await turn.session.add_items([{"role": "user", "content": text}])
+        task = asyncio.create_task(self._update_graph(turn))  # don't make a spoken reply wait for this
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+        instructions = await self._spoken(turn.agent, turn.ctx, session_id)
+        return VoiceTurn(**turn.info().model_dump(), in_crisis=turn.in_crisis, instructions=instructions)
+
+    async def voice_assistant(self, session_id: str, text: str) -> None:
+        """What Solace said out loud, so the chat and later replies remember it."""
+        await self.session(session_id).add_items([{"role": "assistant", "content": text}])
+
+    async def _update_graph(self, turn: _Turn) -> None:
+        self._finish(turn, await self._safe_build_graph(turn))
+
+    async def _spoken(self, agent: Agent, ctx: UserContext, session_id: str, opening: bool = False) -> str:
+        base = await agent.get_system_prompt(RunContextWrapper(context=ctx))
+        recent = (await self.history(session_id))[-10:]
+        if recent:
+            lines = "\n".join(f"{m.role}: {m.text[:400]}" for m in recent)
+            base += f"\n# The conversation so far (continue it naturally, don't repeat yourself)\n{lines}\n"
+        return voice_instructions(base or "", opening)
+
     async def assess(self, session: SQLiteSession, message: str) -> RiskAssessment:
         quick = keyword_screen(message)
         history = await session.get_items(limit=12)
@@ -185,15 +234,18 @@ class Conversation:
         if risk.level > RiskLevel.NONE:
             log.info("risk=%s via %s", risk.level.name, risk.source)  # never log message content
 
+        ctx = self._context(graph, in_crisis, faith)
+        return _Turn(session_id, message, session, agent, ctx, risk, in_crisis, graph)
+
+    def _context(self, graph: IssueGraph, in_crisis: bool, faith: str | None) -> UserContext:
         gap = None if in_crisis else next_gap(graph)
-        ctx = UserContext(
+        return UserContext(
             faith=faith,
             region=self.settings.solace_region,
             resources=resources_for(self.settings.solace_region),
             graph_summary=graph.summary(),
             next_gap=gap.hint if gap else None,
         )
-        return _Turn(session_id, message, session, agent, ctx, risk, in_crisis, graph)
 
     def _finish(self, turn: _Turn, update: GraphUpdate) -> IssueGraph:
         if update.nodes or update.edges or update.domains:

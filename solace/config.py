@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     solace_region: str = "LK"
     # Where conversation history is stored. ":memory:" keeps nothing on disk.
     solace_db_path: str = "data/solace.db"
+    # Real-time voice (OpenAI Realtime API over WebRTC).
+    solace_voice_model: str = "gpt-realtime-2.1"
+    solace_transcribe_model: str = "gpt-transcribe"
+    solace_voice: str = "marin"
 
 
 @lru_cache

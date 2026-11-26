@@ -7,6 +7,7 @@ import uuid
 from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi import Path as PathParam
@@ -17,9 +18,10 @@ from pydantic import BaseModel, Field
 from solace import __version__
 from solace.assessment import coverage, next_gap
 from solace.config import get_settings
-from solace.conversation import Conversation, Message, Reply
+from solace.conversation import Conversation, Message, Reply, VoiceTurn
 from solace.graph import IssueGraph
 from solace.safety import Resource, resources_for
+from solace.voice import Mint, openai_minter, session_config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -30,6 +32,7 @@ SESSION_RE = r"^[a-f0-9]{32}$"
 app = FastAPI(title="Solace", version=__version__, docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
 _conversation: Conversation | None = None
+voice_mint: Mint | None = None  # replaced in tests
 
 
 def conversation() -> Conversation:
@@ -45,7 +48,8 @@ CSP = (
     "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; "
     # The hash allows only the small stylesheet Cytoscape 3.30.2 injects; update it if the version changes.
     "style-src 'self' 'sha256-pgvDUBa4IjFA2yuSJ2cqcyxmNYJMborsd0ORcRv9vw8='; "
-    "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    "img-src 'self' data:; connect-src 'self' https://api.openai.com; "
+    "media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 )
 
 
@@ -84,13 +88,15 @@ class RateLimiter:
 
 
 chat_limiter = RateLimiter(limit=20, window=60)
+voice_call_limiter = RateLimiter(limit=6, window=60)  # each call costs real money
+voice_turn_limiter = RateLimiter(limit=40, window=60)  # spoken turns are short and frequent
 
 
-def check_rate(request: Request) -> None:
+def check_rate(request: Request, limiter: RateLimiter | None = None) -> None:
     # Behind a reverse proxy, run uvicorn with --proxy-headers so client.host is the real IP.
     # We never read X-Forwarded-For ourselves: anyone could fake it to dodge the limit.
     client = request.client.host if request.client else "unknown"
-    if not chat_limiter.allow(client):
+    if not (limiter or chat_limiter).allow(client):
         raise HTTPException(status_code=429, detail="slow_down")
 
 
@@ -151,6 +157,67 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"X-Accel-Buffering": "no", "Cache-Control": "no-store"},
     )
+
+
+# ---------- voice ----------
+
+
+class VoiceStart(BaseModel):
+    session_id: str | None = Field(default=None, pattern=SESSION_RE)
+    faith: str | None = None
+
+    clean_faith = ChatRequest.clean_faith
+
+
+class VoiceCall(BaseModel):
+    session_id: str
+    client_secret: str
+    expires_at: int
+    model: str
+    resources: list[Resource]
+
+
+@app.post("/api/voice/session")
+async def voice_session(req: VoiceStart, request: Request) -> VoiceCall:
+    """Start a voice call: a short-lived key for the browser's WebRTC connection to OpenAI."""
+    check_rate(request, voice_call_limiter)
+    settings = get_settings()
+    if not settings.openai_api_key and voice_mint is None:
+        raise HTTPException(status_code=503, detail="voice_unavailable")
+    session_id = req.session_id or uuid.uuid4().hex
+    instructions = await conversation().voice_start(session_id, faith=req.clean_faith())
+    try:
+        secret = await (voice_mint or openai_minter(settings))(session_config(settings, instructions))
+    except Exception as exc:
+        logging.getLogger(__name__).exception("could not start a voice session")
+        raise HTTPException(status_code=503, detail="voice_unavailable") from exc
+    return VoiceCall(
+        session_id=session_id,
+        client_secret=secret["value"],
+        expires_at=secret["expires_at"],
+        model=settings.solace_voice_model,
+        resources=resources_for(settings.solace_region),
+    )
+
+
+class VoiceText(BaseModel):
+    session_id: str = Field(pattern=SESSION_RE)
+    role: Literal["user", "assistant"]
+    text: str = Field(min_length=1, max_length=4000)
+    faith: str | None = None
+
+    clean_faith = ChatRequest.clean_faith
+
+
+@app.post("/api/voice/turn", response_model=None)
+async def voice_turn(req: VoiceText, request: Request) -> VoiceTurn | Response:
+    """A finished transcript from the call. User speech is risk-screened like any typed message."""
+    check_rate(request, voice_turn_limiter)
+    text = req.text.strip()
+    if req.role == "assistant":
+        await conversation().voice_assistant(req.session_id, text)
+        return Response(status_code=204)
+    return await conversation().voice_user(req.session_id, text, faith=req.clean_faith())
 
 
 @app.get("/api/sessions/{session_id}/messages")
