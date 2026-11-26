@@ -114,7 +114,7 @@ function addSources(sources) {
     box.appendChild(a);
   }
   thread.appendChild(box);
-  scrollToEnd();
+  requestAnimationFrame(() => scrollToEnd(false)); // keep the sources in view once the reply settles
 }
 
 function addCareCard(resources, urgent) {

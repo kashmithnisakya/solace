@@ -77,6 +77,9 @@ docs/ROADMAP.md          phases and status
 - Keep JS and CSS in `solace/web/static/`. Inline `<script>`/`<style>` and `style="…"` attributes are blocked by the CSP.
 - Render model text with `textContent`, never `innerHTML`.
 
+**Demo GIF:** any change to `solace/web/` must refresh `docs/demo.gif` (and
+`docs/demo/counsellor-dashboard.jpg` if the dashboard changed) in the same PR. See `docs/demo/README.md`.
+
 ## Privacy
 
 - Never commit real conversations, names, phone numbers or `.env`.
