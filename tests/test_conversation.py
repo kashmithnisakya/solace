@@ -121,3 +121,36 @@ async def test_delete_forgets_everything(settings):
     assert conv.graphs.load("s1").nodes == []
     assert await conv.session("s1").get_items() == []
     assert "s1" not in conv._last_level
+
+
+async def collect(gen):
+    return [e async for e in gen]
+
+
+async def test_stream_yields_chunks_in_order(settings):
+    async def stream(agent, message, ctx, session):
+        for word in ["Hey ", "there."]:
+            yield word
+
+    conv = make_conversation(settings)
+    conv._stream = stream
+    evs = await collect(conv.stream("s1", "hi"))
+    assert "".join(e["text"] for e in evs if e["type"] == "delta") == "Hey there."
+    assert evs[-1]["type"] == "done"
+
+
+async def test_stream_failure_in_crisis_sends_safety_message(settings):
+    async def broken(agent, message, ctx, session):
+        yield "I'm "
+        raise RuntimeError("connection dropped")
+
+    conv = make_conversation(settings, RiskLevel.IMMINENT)
+    conv._stream = broken
+    text = "".join(e.get("text", "") for e in await collect(conv.stream("s1", "x")))
+    assert text.startswith("I'm ") and "1926" in text
+
+
+async def test_stream_failure_outside_crisis_offers_resources(settings):
+    conv = make_conversation(settings, respond=failing)
+    evs = await collect(conv.stream("s1", "hello"))
+    assert any(e["type"] == "resources" for e in evs)

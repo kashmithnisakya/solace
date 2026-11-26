@@ -9,7 +9,8 @@
 
 ## What it does
 
-- **Talks with people** warmly and without judgement, in text now and real-time voice soon.
+- **Talks like a caring person, not a chatbot.** Replies stream in as they are written, match the person's tone and length, and remember the details they shared.
+- **Feels like a native app.** A calm, Apple-style interface with light and dark mode, tap-to-call crisis lines, and a conversation that survives a page reload.
 - **Checks every message for suicide and self-harm risk.** There are two independent checks: a fast keyword screen and an AI screener. Either one can raise the alarm.
 - **Switches to crisis mode** when risk is high. It stays calm, asks about safety directly, and connects the person to crisis lines and real people. If the AI fails, a fixed safety message is sent instead, so a person in crisis never sees an error.
 - **Builds a private map (issue graph)** of what the person is going through: issues, feelings, triggers, people and supports, and how they connect. It uses roles, never names.
@@ -32,12 +33,21 @@ uv run uvicorn solace.api:app --reload
 
 Open http://localhost:8000.
 
+### Production notes
+
+- Run behind HTTPS and a reverse proxy, with `uvicorn --proxy-headers` so rate limiting sees real client IPs.
+- The built-in rate limit (20 messages/minute per client) is in memory. Use a shared store such as Redis when running several instances.
+- Strict security headers are on by default (CSP, no framing, no referrer, `no-store` on API responses).
+- Message content is never logged; only risk levels are.
+
 With Docker: `docker compose up --build`.
 
 ## API
 
 | Method | Path | Description |
 |---|---|---|
+| `POST` | `/api/chat/stream` | Same request; replies as server-sent events: `start` → `delta`… → `done` |
+| `GET` | `/api/sessions/{id}/messages` | Restore a conversation's messages |
 | `POST` | `/api/chat` | `{"message": "...", "session_id": null, "faith": "buddhism"}` → reply, risk level, resources |
 | `GET` | `/api/sessions/{id}/graph` | The person's issue graph, coverage, and next area to explore |
 | `DELETE` | `/api/sessions/{id}` | Delete the conversation, graph and risk state |
@@ -67,7 +77,7 @@ solace/
 ├── config.py           settings from .env
 ├── assistants/         companion, crisis, risk-screener and graph-builder agents
 ├── safety/             keyword screen, risk levels, crisis lines
-└── web/                simple chat page
+└── web/                Apple-style web app (index.html, static/app.css, static/app.js)
 tests/                  unit tests, including crisis-phrase test cases
 ```
 

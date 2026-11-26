@@ -2,213 +2,113 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="A calm, private place to talk. Solace listens, helps you make sense of things, and connects you to real help.">
 <title>Solace</title>
-<style>
-  :root {
-    --bg: #f6f4ef; --surface: #ffffff; --text: #22252a; --muted: #6b6f76;
-    --accent: #3f6f68; --user: #e3ece9; --border: #e2ded6; --alert: #8a3b2e; --alert-bg: #fbeeea;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #16181b; --surface: #1f2226; --text: #e8e6e1; --muted: #9a9ea5;
-      --accent: #7fb3aa; --user: #2a3634; --border: #2e3237; --alert: #f2a594; --alert-bg: #3a2420;
-    }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .app { max-width: 720px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column; padding: 0 16px; }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--border); }
-  h1 { font-size: 1.25rem; margin: 0; color: var(--accent); letter-spacing: .02em; }
-  select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-  .notice { font-size: .85rem; color: var(--muted); padding: 10px 0; }
-  #log { flex: 1; overflow-y: auto; padding: 8px 0 16px; display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; }
-  .bot { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; }
-  .me { background: var(--user); align-self: flex-end; }
-  .help { background: var(--alert-bg); color: var(--alert); border-radius: 12px; padding: 12px 14px; font-size: .92rem; }
-  .help strong { display: block; margin-bottom: 4px; }
-  .help ul { margin: 0; padding-left: 18px; }
-  form { display: flex; gap: 8px; padding: 12px 0 20px; position: sticky; bottom: 0; background: var(--bg); }
-  textarea { flex: 1; font: inherit; resize: none; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); min-height: 46px; }
-  button { font: inherit; border: 0; border-radius: 12px; padding: 0 18px; background: var(--accent); color: #fff; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  .typing { color: var(--muted); font-style: italic; }
-  .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); padding: 6px 12px; font-size: .9rem; }
-  #mapPanel { display: none; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); margin: 8px 0; overflow: hidden; }
-  #mapPanel.open { display: block; }
-  #map { height: 320px; }
-  .mapinfo { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 8px 12px; font-size: .82rem; color: var(--muted); border-top: 1px solid var(--border); }
-  .legend span { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
-  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-  .empty { padding: 24px; text-align: center; color: var(--muted); font-size: .9rem; }
-</style>
+<link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>Solace</h1>
-    <div class="tools">
-    <button class="ghost" id="mapBtn" type="button" aria-expanded="false" aria-controls="mapPanel">My map</button>
-    <button class="ghost" id="forgetBtn" type="button">Forget me</button>
-    <label>Faith:
-      <select id="faith" aria-label="Include faith in the conversation">
-        <option value="">None</option>
-        <option value="buddhism">Buddhism</option>
-        <option value="hinduism">Hinduism</option>
-        <option value="islam">Islam</option>
-        <option value="christianity">Christianity</option>
-      </select>
-    </label>
+
+<header class="bar">
+  <button class="icon-btn" id="mapBtn" type="button" aria-label="Your map">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="17" r="2.4"/><path d="M8 8l2.6 7M16.2 7.6L13.4 15M8.4 6.8l7.2-.6"/></svg>
+  </button>
+  <div class="title">
+    <div class="avatar" aria-hidden="true"></div>
+    <div>
+      <h1>Solace</h1>
+      <p class="status" id="status">Here for you</p>
     </div>
-  </header>
-  <section id="mapPanel" aria-label="Map of what you have shared">
-    <div id="map"></div>
-    <div class="mapinfo">
-      <div class="legend">
-        <span><i style="background:#c0634f"></i>issue</span><span><i style="background:#c99a3c"></i>feeling</span>
-        <span><i style="background:#8a6fb0"></i>trigger</span><span><i style="background:#5b84b1"></i>person</span>
-        <span><i style="background:#4f9a72"></i>support</span><span><i style="background:#3f8f9a"></i>strength</span>
-      </div>
-      <div id="coverage"></div>
-    </div>
-  </section>
-  <p class="notice">Solace is an AI companion, not a therapist or doctor. If you are in danger, call
-    <strong>1926</strong> (Sri Lanka, 24/7) or your local emergency number.</p>
-  <div id="log" aria-live="polite">
-    <div class="msg bot">Hi, I'm Solace. I'm here to listen. How are you feeling today?</div>
   </div>
-  <form id="form">
-    <textarea id="input" rows="1" placeholder="Type how you feel…" aria-label="Message" required></textarea>
-    <button id="send">Send</button>
-  </form>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
-<script>
-  const COLORS = { issue: "#c0634f", emotion: "#c99a3c", trigger: "#8a6fb0", person: "#5b84b1", support: "#4f9a72", strength: "#3f8f9a" };
-  const mapPanel = document.getElementById("mapPanel");
-  const mapBtn = document.getElementById("mapBtn");
-  let lastGraph = { nodes: [], edges: [], domains: {} };
-  let cy = null;
+  <button class="icon-btn" id="moreBtn" type="button" aria-label="Settings and support">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg>
+  </button>
+</header>
 
-  function drawMap() {
-    if (!mapPanel.classList.contains("open")) return;
-    const el = document.getElementById("map");
-    const g = lastGraph;
-    document.getElementById("coverage").textContent =
-      `Areas understood: ${Object.keys(g.domains || {}).length} of 11`;
-    if (!g.nodes.length) {
-      if (cy) { cy.destroy(); cy = null; }
-      el.innerHTML = '<div class="empty">Your map will grow as you share. Only you can see it.</div>';
-      return;
-    }
-    if (typeof cytoscape === "undefined") {
-      el.innerHTML = '<div class="empty">' + g.nodes.map(n => n.label).join(" · ") + "</div>";
-      return;
-    }
-    el.innerHTML = "";
-    const text = getComputedStyle(document.body).getPropertyValue("--text").trim();
-    const elements = [
-      ...g.nodes.map(n => ({ data: { id: n.id, label: n.label, type: n.type, size: 26 + Math.min(n.mentions, 5) * 6 + n.severity * 6 } })),
-      ...g.edges.map(e => ({ data: { id: `${e.source}>${e.target}>${e.relation}`, source: e.source, target: e.target, label: e.relation.replace("_", " ") } })),
-    ];
-    if (cy) cy.destroy();
-    cy = cytoscape({
-      container: el, elements, wheelSensitivity: 0.2,
-      style: [
-        { selector: "node", style: { "background-color": n => COLORS[n.data("type")] || "#888", width: "data(size)", height: "data(size)",
-            label: "data(label)", color: text, "font-size": 11, "text-valign": "bottom", "text-margin-y": 4, "text-wrap": "wrap", "text-max-width": 90 } },
-        { selector: "edge", style: { width: 1.5, "line-color": "#9aa0a6", "target-arrow-color": "#9aa0a6", "target-arrow-shape": "triangle",
-            "curve-style": "bezier", label: "data(label)", "font-size": 9, color: "#9aa0a6", "text-rotation": "autorotate" } },
-      ],
-      layout: { name: "cose", animate: false, padding: 24, nodeRepulsion: 9000 },
-    });
-  }
+<main class="thread" id="thread" aria-live="polite" aria-label="Conversation"></main>
 
-  mapBtn.addEventListener("click", () => {
-    const open = mapPanel.classList.toggle("open");
-    mapBtn.setAttribute("aria-expanded", open);
-    drawMap();
-  });
+<form class="composer" id="composer" autocomplete="off">
+  <div class="field">
+    <textarea id="input" rows="1" placeholder="Message" aria-label="Message" maxlength="4000" enterkeyhint="send"></textarea>
+    <button class="send" id="send" type="submit" aria-label="Send" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg>
+    </button>
+  </div>
+  <p class="footnote">Solace is an AI, not a therapist. In an emergency, call <a href="tel:1926">1926</a> or <a href="tel:119">119</a>.</p>
+</form>
 
-  document.getElementById("forgetBtn").addEventListener("click", async () => {
-    if (!confirm("Delete this whole conversation and your map? This cannot be undone.")) return;
-    if (sessionId) await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
-    sessionId = null; shownHelp = false;
-    lastGraph = { nodes: [], edges: [], domains: {} };
-    log.innerHTML = '<div class="msg bot">Everything has been deleted. I\'m still here if you want to talk.</div>';
-    drawMap();
-  });
+<!-- Welcome -->
+<dialog class="sheet" id="welcome" aria-labelledby="welcomeTitle">
+  <div class="sheet-body welcome">
+    <div class="hero-mark" aria-hidden="true"></div>
+    <h2 id="welcomeTitle">Welcome to Solace</h2>
+    <ul class="features">
+      <li><span class="f-icon f-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg></span><div><strong>A safe place to talk</strong><p>Share what's on your mind, at your own pace. No judgement.</p></div></li>
+      <li><span class="f-icon f-help" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span><div><strong>Real help when you need it</strong><p>Solace is an AI, not a therapist. If things get hard, it will connect you with real people.</p></div></li>
+      <li><span class="f-icon f-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><strong>Private, and yours</strong><p>No account needed. Delete everything any time from settings.</p></div></li>
+    </ul>
+    <button class="btn-primary" id="welcomeContinue" type="button">Continue</button>
+  </div>
+</dialog>
 
-  const log = document.getElementById("log");
-  const form = document.getElementById("form");
-  const input = document.getElementById("input");
-  const send = document.getElementById("send");
-  let sessionId = null;
-  let shownHelp = false;
+<!-- Map -->
+<dialog class="sheet tall" id="mapSheet" aria-labelledby="mapTitle">
+  <div class="sheet-head">
+    <span class="grabber" aria-hidden="true"></span>
+    <h2 id="mapTitle">Your Map</h2>
+    <button class="text-btn" type="button" data-close>Done</button>
+  </div>
+  <div class="sheet-body">
+    <p class="caption">What you've shared, and how it connects. Only you can see this.</p>
+    <div class="map-card"><div id="map"></div></div>
+    <div class="progress-row">
+      <span>Understanding</span>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="progress"><div id="progressFill"></div></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+</dialog>
 
-  function add(cls, text) {
-    const el = document.createElement("div");
-    el.className = cls;
-    el.textContent = text;
-    log.appendChild(el);
-    el.scrollIntoView({ behavior: "smooth", block: "end" });
-    return el;
-  }
+<!-- Settings -->
+<dialog class="sheet tall" id="settingsSheet" aria-labelledby="settingsTitle">
+  <div class="sheet-head">
+    <span class="grabber" aria-hidden="true"></span>
+    <h2 id="settingsTitle">Settings</h2>
+    <button class="text-btn" type="button" data-close>Done</button>
+  </div>
+  <div class="sheet-body">
+    <h3 class="group-label">Talk to someone now</h3>
+    <ul class="list" id="supportList"></ul>
 
-  function addHelp(resources) {
-    const box = document.createElement("div");
-    box.className = "help";
-    const title = document.createElement("strong");
-    title.textContent = "You don't have to go through this alone. Free, confidential support:";
-    const list = document.createElement("ul");
-    for (const r of resources) {
-      const li = document.createElement("li");
-      li.textContent = `${r.name}: ${r.contact}${r.hours ? " (" + r.hours + ")" : ""}`;
-      list.appendChild(li);
-    }
-    box.append(title, list);
-    log.appendChild(box);
-    box.scrollIntoView({ behavior: "smooth", block: "end" });
-  }
+    <h3 class="group-label">Faith</h3>
+    <ul class="list" id="faithList" role="radiogroup" aria-label="Include faith in conversations"></ul>
+    <p class="group-note">If you choose a faith, Solace may gently draw on it when it helps. It will never preach.</p>
 
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
-  });
+    <h3 class="group-label">Privacy</h3>
+    <ul class="list">
+      <li><button class="row destructive" id="deleteBtn" type="button">Delete Conversation</button></li>
+    </ul>
+    <p class="group-note">Deletes your messages and your map from Solace. This can't be undone.</p>
+  </div>
+</dialog>
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const message = input.value.trim();
-    if (!message) return;
-    add("msg me", message);
-    input.value = "";
-    send.disabled = true;
-    const typing = add("msg bot typing", "…");
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, session_id: sessionId, faith: document.getElementById("faith").value || null }),
-      });
-      if (!res.ok) throw new Error(res.status);
-      const data = await res.json();
-      sessionId = data.session_id;
-      lastGraph = data.graph;
-      drawMap();
-      typing.remove();
-      add("msg bot", data.reply);
-      const crisis = data.risk_level === "high" || data.risk_level === "imminent";
-      if (data.resources.length && (crisis || !shownHelp)) { addHelp(data.resources); shownHelp = true; }
-    } catch {
-      typing.remove();
-      add("msg bot", "Sorry, I couldn't connect. If you need urgent help, please call 1926 or your local emergency number.");
-    } finally {
-      send.disabled = false;
-      input.focus();
-    }
-  });
-</script>
+<!-- Confirm -->
+<dialog class="alert" id="confirmDelete" aria-labelledby="confirmTitle">
+  <div class="alert-body">
+    <h2 id="confirmTitle">Delete Conversation?</h2>
+    <p>Your messages and your map will be permanently deleted.</p>
+  </div>
+  <div class="alert-actions">
+    <button type="button" id="cancelDelete">Cancel</button>
+    <button type="button" class="destructive" id="confirmDeleteBtn">Delete</button>
+  </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js" integrity="sha512-EY3U1MWdgKx0P1dqTE4inlKz2cpXtWpsR1YUyD855Hs6RL/A0cyvrKh60EpE8wDZ814cTe1KgRK+sG0Rn792vQ==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+<script src="/static/app.js" defer></script>
 </body>
 </html>
