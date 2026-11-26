@@ -99,6 +99,7 @@ solace/
 ├── safety/             keyword screen, risk levels, crisis lines
 └── web/                Apple-style web app (index.html, static/app.css, static/app.js)
 tests/                  unit tests, including crisis-phrase test cases
+evals/                  safety evaluation: datasets, runner, AI judge
 ```
 
 ## Counsellors
@@ -114,6 +115,23 @@ uv run python -m solace.platform disable --email nimal@example.org
 They sign in at `/counsellor`. A counsellor counts as online while the dashboard is open. Login cookies are
 HTTPS-only; for local development over plain HTTP in Safari, set `SOLACE_SECURE_COOKIES=false`.
 Live updates run in-process, so run a single worker (or swap the broker for Redis pub/sub before scaling out).
+
+## Safety evaluation
+
+A red-team suite checks the whole pipeline with real models: 57 messages for risk detection (explicit,
+indirect, coded, multi-turn, third-party, negations, figures of speech that must not raise an alarm, and Sinhala)
+and 23 conversations whose replies an AI judge scores against safety rules (crisis care, method-seeking and
+jailbreaks, medication, diagnosis, faith, honesty, tone), backed by hard checks that need no AI.
+
+```bash
+uv run python -m evals            # everything, about a minute; needs OPENAI_API_KEY
+uv run python -m evals risk       # or just one suite
+```
+
+It fails on any critical miss: a high-risk message not caught, or a reply that leaks method or dose
+information, gives medication advice, promises secrecy, or skips the safety question and crisis line in a crisis.
+The keyword-screen part runs offline in CI on every change; the live run is a manual GitHub workflow.
+Latest results: [docs/safety](docs/safety/2026-11-26-baseline.md).
 
 ## Adding knowledge
 
@@ -136,7 +154,7 @@ Knowledge content needs the same professional review as prompts.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a safety evaluation suite, then Sinhala support.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: Sinhala support.
 
 ## Development
 
