@@ -31,6 +31,7 @@ solace/
 ├── api.py               HTTP routes
 ├── conversation.py      per-message flow: risk screen → pick agent → reply + graph update
 ├── voice.py             Realtime voice: short-lived keys, spoken instructions
+├── platform/            counsellor accounts, hand-off store, live broker, dashboard routes
 ├── knowledge/           knowledge search + citations; library/*.md are the notes
 ├── assessment.py        picks the next life area worth gently asking about
 ├── assistants/          agent definitions and prompts (companion, crisis, classifier, graph_builder)
@@ -54,6 +55,8 @@ docs/ROADMAP.md          phases and status
    Never give the browser the real API key; it only gets short-lived keys from `/api/voice/session`.
 9. Knowledge notes are written in our own words with a working source `url`; never paste copyrighted text.
    Never add method or dose information. The Crisis agent never receives knowledge notes.
+10. Counsellors may only see conversations the person consented to share (an open or past hand-off).
+    Log every counsellor view and action with `PlatformStore.audit`, never message content.
 
 ## Code conventions
 

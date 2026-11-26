@@ -93,6 +93,24 @@ CITE_TEXT = (
 CITE_SPOKEN = "Don't say marker numbers. Only name where an idea comes from if they ask."
 
 
+HUMANS = """
+# Human counsellors
+Messages in the history that start with [counsellor:Name] were written by a real human counsellor,
+not by you. Never write that prefix yourself and never pretend to be the counsellor.
+"""
+
+WAITING = """
+# A counsellor has been asked to join
+The person asked to talk to a real person, and a counsellor has been notified. Keep supporting them
+warmly until someone joins. Don't promise how long it will take. If they are in danger, the crisis
+lines are still the fastest way to reach a person.
+"""
+
+
+def human_sections(c: UserContext) -> str:
+    return HUMANS + (WAITING if c.waiting_for_human else "")
+
+
 def knowledge_section(c: UserContext) -> str:
     if not c.knowledge:
         return ""
@@ -107,6 +125,7 @@ def companion_instructions(ctx: RunContextWrapper[UserContext], agent: Agent) ->
     if c.next_gap:
         text += GAP.format(gap=c.next_gap)
     text += knowledge_section(c)
+    text += human_sections(c)
     if c.resources:
         text += "\n# Support lines (only if the person asks for help options)\n" + c.resources_text()
     return text

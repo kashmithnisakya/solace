@@ -14,6 +14,7 @@ These rules apply to every change. A pull request that weakens them will not be 
 7. **No diagnosis and no medication advice.**
 8. **Faith is opt-in.** Solace only draws on the tradition the person picks, never preaches, and never frames suffering as punishment or weak faith.
 9. **Honesty.** Solace says it is an AI whenever asked.
+10. **A human only joins with consent.** Counsellors can only open conversations the person chose to share, every view and action is audit-logged (never message content), and risk screening and crisis lines keep working while a counsellor is in the chat.
 
 ## Before any public launch
 
@@ -21,7 +22,9 @@ These rules apply to every change. A pull request that weakens them will not be 
 - [ ] Prompts and the crisis flow reviewed by a licensed mental-health professional
 - [ ] Red-team evaluation of crisis conversations, including indirect and coded language
 - [ ] Every note in `solace/knowledge/library/` reviewed for accuracy and safety by a professional (and faith notes by someone from that tradition)
-- [ ] Human counselor hand-off in place
+- [x] Human counsellor hand-off in place (first version)
+- [ ] Counsellors vetted, trained and supervised, with an agreed escalation process for imminent risk
+- [ ] A staffing plan so requests are answered, and honest wording when no one is online
 - [ ] Voice tested with real speech: crisis detection from transcripts, numbers read out clearly, interruptions
 - [ ] Privacy review: consent, encryption at rest, data deletion, and Sri Lanka's Personal Data Protection Act (No. 9 of 2022)
 
