@@ -7,6 +7,10 @@
 > In Sri Lanka: **1926** (National Mental Health Helpline, 24/7) · **1333** (CCCline) · **119** (Emergency).
 > Elsewhere: [findahelpline.com](https://findahelpline.com).
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Solace on a phone: welcome screen, a conversation, sources, crisis support with call buttons, the issue map, a voice call, and a counsellor joining the chat" width="320">
+</p>
+
 ## What it does
 
 - **Talks like a caring person, not a chatbot.** Replies stream in as they are written, match the person's tone and length, and remember the details they shared.
@@ -103,6 +107,10 @@ evals/                  safety evaluation: datasets, runner, AI judge
 ```
 
 ## Counsellors
+
+<p align="center">
+  <img src="docs/demo/counsellor-dashboard.jpg" alt="Counsellor dashboard: conversation list, the chat with the person, Solace and the counsellor, and a panel with risk, what they've shared and crisis lines" width="720">
+</p>
 
 People never need an account. Counsellors do, created from the command line:
 
