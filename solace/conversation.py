@@ -9,6 +9,7 @@ Each message is a "turn":
 
 import asyncio
 import logging
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +28,7 @@ from solace.assistants.graph_builder import build_graph_builder, builder_input
 from solace.config import Settings
 from solace.graph import GraphStore, GraphUpdate, IssueGraph
 from solace.knowledge import KnowledgeBase, Passage, Source, clean_markers, openai_embedder, strip_citations
+from solace.platform import COUNSELLORS, Handoff, PlatformStore, broker, person
 from solace.safety import Resource, RiskAssessment, RiskLevel, combine, keyword_screen, resources_for
 from solace.voice import voice_instructions
 
@@ -59,8 +61,12 @@ class Reply(TurnInfo):
 
 
 class Message(BaseModel):
-    role: str  # "user" or "assistant"
+    role: str  # "user", "assistant", or "counsellor" (a real person)
     text: str
+    name: str | None = None  # the counsellor's name
+
+
+COUNSELLOR_ITEM = re.compile(r"^\[counsellor:([^\]\n]{1,60})\] (.*)$", re.S)
 
 
 class VoiceTurn(TurnInfo):
@@ -127,6 +133,7 @@ class Conversation:
         if settings.solace_db_path != ":memory:":
             Path(settings.solace_db_path).parent.mkdir(parents=True, exist_ok=True)
         self.graphs = GraphStore(settings.solace_db_path)
+        self.platform = PlatformStore(settings.solace_db_path)
 
     def session(self, session_id: str) -> SQLiteSession:
         if self.settings.solace_db_path == ":memory:":
@@ -139,7 +146,11 @@ class Conversation:
     # ---------- public API ----------
 
     async def send(self, session_id: str, message: str, faith: str | None = None) -> Reply:
-        turn = await self._prepare(session_id, message, faith)
+        handoff = self.platform.open_for(session_id)
+        if handoff and handoff.status == "active":
+            info = await self._to_counsellor(session_id, message, handoff)
+            return Reply(**info.model_dump(), reply="", graph=self.graphs.load(session_id))
+        turn = await self._prepare(session_id, message, faith, waiting=handoff is not None)
         text, update = await asyncio.gather(self._safe_respond(turn), self._safe_build_graph(turn))
         graph = self._finish(turn, update)
         info = turn.info()
@@ -150,7 +161,18 @@ class Conversation:
 
     async def stream(self, session_id: str, message: str, faith: str | None = None) -> AsyncIterator[dict]:
         """Yield events: {"type": "start", ...}, {"type": "delta", "text"}, {"type": "done", "graph"}."""
-        turn = await self._prepare(session_id, message, faith)
+        handoff = self.platform.open_for(session_id)
+        if handoff and handoff.status == "active":
+            # A real person is here: Solace steps back and the message goes to them.
+            info = await self._to_counsellor(session_id, message, handoff)
+            yield {"type": "start", **info.model_dump(mode="json"), "human": True}
+            yield {
+                "type": "done",
+                "graph": self.graphs.load(session_id).model_dump(mode="json"),
+                "sources": [],
+            }
+            return
+        turn = await self._prepare(session_id, message, faith, waiting=handoff is not None)
         yield {"type": "start", **turn.info().model_dump(mode="json")}
 
         graph_task = asyncio.create_task(self._safe_build_graph(turn))
@@ -168,6 +190,8 @@ class Conversation:
                 yield {"type": "resources", "resources": [r.model_dump() for r in turn.ctx.resources]}
 
         graph = self._finish(turn, await graph_task)
+        if handoff:  # someone is waiting for a counsellor: refresh their view of this conversation
+            self._notify_counsellors(session_id, turn.risk)
         # The client strips [n] markers and shows only the sources the reply cited.
         sources = [_source(p).model_dump() for p in turn.ctx.knowledge]
         yield {"type": "done", "graph": graph.model_dump(mode="json"), "sources": sources}
@@ -178,6 +202,10 @@ class Conversation:
         for item in await self.session(session_id).get_items():
             text = _item_text(item)
             if text and item.get("role") in ("user", "assistant"):
+                human = COUNSELLOR_ITEM.match(text) if item["role"] == "assistant" else None
+                if human:
+                    out.append(Message(role="counsellor", name=human.group(1), text=human.group(2)))
+                    continue
                 if item["role"] == "assistant":
                     text = clean_markers(text)
                 out.append(Message(role=item["role"], text=text))
@@ -188,6 +216,56 @@ class Conversation:
         await self.session(session_id).clear_session()
         self.graphs.delete(session_id)
         self._last_level.pop(session_id, None)
+        open_handoff = self.platform.open_for(session_id)
+        self.platform.delete_session(session_id)
+        if open_handoff:
+            broker.publish(COUNSELLORS, {"type": "updated", "handoff_id": open_handoff.id})
+
+    # ---------- human counsellors ----------
+
+    def last_risk(self, session_id: str) -> RiskLevel:
+        return self._last_level.get(session_id, RiskLevel.NONE)
+
+    async def counsellor_message(self, session_id: str, name: str, text: str) -> None:
+        """A counsellor's reply: saved in the conversation (so Solace knows later) and pushed live."""
+        safe_name = re.sub(r"[\]\[\n]", "", name)[:60] or "Counsellor"
+        await self.session(session_id).add_items(
+            [{"role": "assistant", "content": f"[counsellor:{safe_name}] {text}"}]
+        )
+        broker.publish(
+            person(session_id), {"type": "message", "role": "counsellor", "name": safe_name, "text": text}
+        )
+
+    async def _to_counsellor(self, session_id: str, message: str, handoff: Handoff) -> TurnInfo:
+        session = self.session(session_id)
+        risk, in_crisis = await self._screen(session_id, session, message)
+        await session.add_items([{"role": "user", "content": message}])
+        graph = self.graphs.load(session_id)
+        task = asyncio.create_task(self._update_graph_for(session_id, graph, message))
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+        self._notify_counsellors(session_id, risk)
+        resources = resources_for(self.settings.solace_region)
+        return TurnInfo(
+            session_id=session_id,
+            agent="Counsellor",
+            risk_level=risk.level.name.lower(),
+            resources=resources if (in_crisis or risk.show_resources) else [],
+        )
+
+    def _notify_counsellors(self, session_id: str, risk: RiskAssessment) -> None:
+        h = self.platform.touch(session_id, risk.level.name.lower())
+        if h:
+            broker.publish(COUNSELLORS, {"type": "updated", "handoff_id": h.id})
+
+    async def _update_graph_for(self, session_id: str, graph: IssueGraph, message: str) -> None:
+        try:
+            update = await self._build_graph(graph.summary(), message)
+        except Exception:
+            log.exception("graph builder failed; graph left unchanged")
+            return
+        if update.nodes or update.edges or update.domains:
+            self.graphs.apply(session_id, update)
 
     # ---------- voice ----------
 
@@ -236,22 +314,32 @@ class Conversation:
 
     # ---------- turn steps ----------
 
-    async def _prepare(self, session_id: str, message: str, faith: str | None) -> _Turn:
+    async def _screen(
+        self, session_id: str, session: SQLiteSession, message: str
+    ) -> tuple[RiskAssessment, bool]:
+        risk = await self.assess(session, message)
+        previous = self._last_level.get(session_id, RiskLevel.NONE)
+        self._last_level[session_id] = risk.level
+        if risk.level > RiskLevel.NONE:
+            log.info("risk=%s via %s", risk.level.name, risk.source)  # never log message content
+        # Stay in crisis mode until the risk clearly drops, not just for one message.
+        return risk, risk.is_crisis or (previous >= RiskLevel.HIGH and risk.level >= RiskLevel.MODERATE)
+
+    async def _prepare(
+        self, session_id: str, message: str, faith: str | None, waiting: bool = False
+    ) -> _Turn:
         session = self.session(session_id)
         graph = self.graphs.load(session_id)
 
         # Look up notes while the risk check runs, so it adds no waiting.
-        risk, notes = await asyncio.gather(self.assess(session, message), self._search(message, faith))
-        previous = self._last_level.get(session_id, RiskLevel.NONE)
-        self._last_level[session_id] = risk.level
-        # Stay in crisis mode until the risk clearly drops, not just for one message.
-        in_crisis = risk.is_crisis or (previous >= RiskLevel.HIGH and risk.level >= RiskLevel.MODERATE)
+        (risk, in_crisis), notes = await asyncio.gather(
+            self._screen(session_id, session, message), self._search(message, faith)
+        )
         agent = self.crisis if in_crisis else self.companion
-        if risk.level > RiskLevel.NONE:
-            log.info("risk=%s via %s", risk.level.name, risk.source)  # never log message content
 
         ctx = self._context(graph, in_crisis, faith)
         ctx.knowledge = [] if in_crisis else notes  # crisis replies stay focused on safety
+        ctx.waiting_for_human = waiting
         return _Turn(session_id, message, session, agent, ctx, risk, in_crisis, graph)
 
     def _context(self, graph: IssueGraph, in_crisis: bool, faith: str | None) -> UserContext:

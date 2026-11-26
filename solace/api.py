@@ -20,6 +20,7 @@ from solace.assessment import coverage, next_gap
 from solace.config import get_settings
 from solace.conversation import Conversation, Message, Reply, VoiceTurn
 from solace.graph import IssueGraph
+from solace.platform.routes import router as platform_router
 from solace.safety import Resource, resources_for
 from solace.voice import Mint, openai_minter, session_config
 
@@ -90,6 +91,8 @@ class RateLimiter:
 chat_limiter = RateLimiter(limit=20, window=60)
 voice_call_limiter = RateLimiter(limit=6, window=60)  # each call costs real money
 voice_turn_limiter = RateLimiter(limit=40, window=60)  # spoken turns are short and frequent
+handoff_limiter = RateLimiter(limit=5, window=60)
+login_limiter = RateLimiter(limit=10, window=300)  # slows down password guessing
 
 
 def check_rate(request: Request, limiter: RateLimiter | None = None) -> None:
@@ -185,6 +188,9 @@ async def voice_session(req: VoiceStart, request: Request) -> VoiceCall:
     if not settings.openai_api_key and voice_mint is None:
         raise HTTPException(status_code=503, detail="voice_unavailable")
     session_id = req.session_id or uuid.uuid4().hex
+    handoff = conversation().platform.open_for(session_id)
+    if handoff and handoff.status == "active":
+        raise HTTPException(status_code=409, detail="with_counsellor")
     instructions = await conversation().voice_start(session_id, faith=req.clean_faith())
     try:
         secret = await (voice_mint or openai_minter(settings))(session_config(settings, instructions))
@@ -242,6 +248,9 @@ def get_graph(session_id: str = SessionId) -> GraphView:
 async def delete_session(session_id: str = SessionId) -> Response:
     await conversation().delete(session_id)
     return Response(status_code=204)
+
+
+app.include_router(platform_router)
 
 
 @app.get("/")

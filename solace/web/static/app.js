@@ -46,6 +46,15 @@ function addBubble(role, text) {
   return b;
 }
 
+function addCounsellorBubble(name, text) {
+  const last = thread.lastElementChild;
+  if (!(last && last.classList.contains("human"))) thread.appendChild(el("div", "sender", `${name} · Counsellor`));
+  const b = el("div", "bubble them human", text);
+  thread.appendChild(b);
+  scrollToEnd();
+  return b;
+}
+
 function addStamp() {
   const now = new Date();
   const s = el("div", "stamp");
@@ -66,7 +75,7 @@ function typingBubble() {
 }
 
 function setTyping(on) {
-  statusEl.textContent = on ? "typing…" : "Here for you";
+  statusEl.textContent = on ? "typing…" : handoff.status === "active" ? "With a counsellor" : "Here for you";
   statusEl.classList.toggle("typing", on);
 }
 
@@ -115,6 +124,12 @@ function addCareCard(resources, urgent) {
     el("h3", null, urgent ? "You deserve support right now" : "You don't have to carry this alone"),
     el("p", null, "Free and confidential. Real people who want to help."),
   );
+  if (!handoff.status) {
+    const ask = el("button", "care-ask", "Chat with a counsellor here");
+    ask.type = "button";
+    ask.addEventListener("click", openHandoffSheet);
+    card.appendChild(ask);
+  }
   for (const r of resources) {
     const row = el("div", "care-row");
     const info = el("div");
@@ -156,7 +171,9 @@ async function restore() {
     if (!msgs.length) return startFresh();
     thread.replaceChildren();
     addStamp();
-    for (const m of msgs) addBubble(m.role, m.text);
+    for (const m of msgs) {
+      if (m.role === "counsellor") addCounsellorBubble(m.name, m.text); else addBubble(m.role, m.text);
+    }
     const g = await fetch(`/api/sessions/${state.sessionId}/graph`);
     if (g.ok) state.graph = (await g.json()).graph;
     scrollToEnd(false);
@@ -169,8 +186,9 @@ async function send(message) {
   state.busy = true;
   updateSendState();
   addBubble("user", message);
-  setTyping(true);
-  const typing = typingBubble();
+  const withPerson = handoff.status === "active"; // a counsellor replies in their own time
+  if (!withPerson) setTyping(true);
+  const typing = withPerson ? el("div") : typingBubble();
   let bubble = null;
   let crisis = false;
   let raw = "";
@@ -211,6 +229,7 @@ async function send(message) {
         if (!line.startsWith("data:")) continue;
         const ev = JSON.parse(line.slice(5));
         if (ev.type === "start") {
+          if (ev.human) { typing.remove(); bubble = typing; } // a counsellor is here; Solace stays quiet
           state.sessionId = ev.session_id;
           store.set("solace.session", ev.session_id);
           state.resources = ev.resources;
@@ -326,6 +345,7 @@ function renderSettings() {
   }
 }
 $("moreBtn").addEventListener("click", () => { renderSettings(); openSheet($("settingsSheet")); });
+$("settingsHandoff").addEventListener("click", () => { $("settingsSheet").close(); openHandoffSheet(); });
 
 /* Delete */
 $("deleteBtn").addEventListener("click", () => $("confirmDelete").showModal());
@@ -337,6 +357,7 @@ $("confirmDeleteBtn").addEventListener("click", async () => {
   state.sessionId = null;
   state.graph = { nodes: [], edges: [], domains: {} };
   state.shownCare = false;
+  setHandoff(null);
   store.set("solace.session", null);
   $("confirmDelete").close();
   $("settingsSheet").close();
@@ -609,6 +630,11 @@ async function startCall() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: state.sessionId, faith: state.faith || null }),
     });
+    if (res.status === 409) {
+      endCall(false);
+      addNotice("Voice is paused while you're chatting with a counsellor.");
+      return;
+    }
     if (res.status === 429) {
       const body = await res.json();
       endCall(false);
@@ -695,7 +721,107 @@ $("muteBtn").addEventListener("click", toggleMute);
 $("callSheet").addEventListener("cancel", (e) => { e.preventDefault(); endCall(); });
 window.addEventListener("pagehide", () => endCall(false));
 
+/* ---------- talking to a real person ---------- */
+const handoff = { status: null, name: null, live: null };
+
+function newSessionId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function setHandoff(status, name = null) {
+  handoff.status = status;
+  handoff.name = name || handoff.name;
+  const bar = $("handoffBar");
+  bar.hidden = !status;
+  bar.classList.toggle("active", status === "active");
+  if (status === "requested") {
+    $("handoffText").textContent = "Waiting for a counsellor. Solace is here meanwhile.";
+    $("handoffEnd").textContent = "Cancel";
+  } else if (status === "active") {
+    $("handoffText").textContent = `${handoff.name} is here with you`;
+    $("handoffEnd").textContent = "End Chat";
+  }
+  statusEl.textContent = status === "active" ? "With a counsellor" : "Here for you";
+  if (status) listen(); else stopListening();
+}
+
+function listen() {
+  if (handoff.live || !state.sessionId) return;
+  handoff.live = new EventSource(`/api/sessions/${state.sessionId}/live`);
+  handoff.live.onmessage = (msg) => {
+    let ev;
+    try { ev = JSON.parse(msg.data); } catch { return; }
+    if (ev.type === "message" && ev.role === "counsellor") {
+      addCounsellorBubble(ev.name, ev.text);
+    } else if (ev.type === "handoff" && ev.status === "active") {
+      setHandoff("active", ev.name);
+      addNotice(`${ev.name}, a counsellor, joined the chat`);
+    } else if (ev.type === "handoff" && ev.status === "closed") {
+      const who = handoff.name;
+      setHandoff(null);
+      addNotice(ev.by === "person" ? "You ended the chat." : `${who || "The counsellor"} left the chat. Solace is here with you again.`);
+    }
+  };
+}
+
+function stopListening() {
+  handoff.live?.close();
+  handoff.live = null;
+}
+
+async function openHandoffSheet() {
+  const avail = $("handoffAvail");
+  avail.textContent = "";
+  avail.classList.remove("online");
+  openSheet($("handoffSheet"));
+  try {
+    const { online } = await (await fetch("/api/handoff/availability")).json();
+    avail.classList.toggle("online", online > 0);
+    avail.textContent = online > 0
+      ? "A counsellor is online now."
+      : "No counsellors are online right now. Your request will wait for the next one. If you need someone now, the free lines in Settings are open.";
+  } catch { /* still allow asking */ }
+}
+
+$("handoffConfirm").addEventListener("click", async () => {
+  if (!state.sessionId) {
+    state.sessionId = newSessionId();
+    store.set("solace.session", state.sessionId);
+  }
+  $("handoffSheet").close();
+  try {
+    const res = await fetch(`/api/sessions/${state.sessionId}/handoff`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ consent: true }),
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    const body = await res.json();
+    setHandoff(body.status, body.counsellor);
+    addNotice("You asked for a counsellor. They'll see this conversation when they join.");
+  } catch {
+    addNotice("I couldn't reach a counsellor just now. Please try again, or call 1926 to talk to someone.");
+  }
+});
+
+$("handoffEnd").addEventListener("click", async () => {
+  if (!state.sessionId) return;
+  const was = handoff.status;
+  try { await fetch(`/api/sessions/${state.sessionId}/handoff`, { method: "DELETE" }); } catch { /* ignore */ }
+  setHandoff(null);
+  addNotice(was === "active" ? "You ended the chat with the counsellor. Solace is here with you." : "Request cancelled.");
+});
+
+async function restoreHandoff() {
+  if (!state.sessionId) return;
+  try {
+    const h = await (await fetch(`/api/sessions/${state.sessionId}/handoff`)).json();
+    if (h.status) setHandoff(h.status, h.counsellor);
+  } catch { /* ignore */ }
+}
+
 /* ---------- boot ---------- */
 fetch("/api/resources").then((r) => r.json()).then((r) => { state.allResources = r; }).catch(() => {});
-restore();
+restore().then(restoreHandoff);
 updateSendState();

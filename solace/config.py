@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # Knowledge base search. Lower the score to use notes more often, raise it to be stricter.
     solace_embedding_model: str = "text-embedding-3-large"
     solace_knowledge_min_score: float = 0.24
+    # Counsellor login cookies are HTTPS-only. Set to false only for local development over plain HTTP.
+    solace_secure_cookies: bool = True
 
 
 @lru_cache

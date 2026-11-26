@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex">
+<title>Solace for Counsellors</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/counsellor.css">
+</head>
+<body class="staff">
+
+<!-- Sign in -->
+<main class="login" id="loginView" hidden>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="hero-mark" aria-hidden="true"></div>
+    <h1>Solace for Counsellors</h1>
+    <p class="caption">Sign in to see people who asked to talk to a person.</p>
+    <ul class="list inset">
+      <li><input id="email" type="email" placeholder="Email" autocomplete="username" required aria-label="Email"></li>
+      <li><input id="password" type="password" placeholder="Password" autocomplete="current-password" required aria-label="Password"></li>
+    </ul>
+    <p class="form-error" id="loginError" role="alert"></p>
+    <button class="btn-primary" type="submit" id="loginBtn">Sign In</button>
+  </form>
+</main>
+
+<!-- Dashboard -->
+<div class="dash" id="dashView" hidden>
+  <aside class="sidebar" id="sidebar" aria-label="Conversations">
+    <header class="side-head">
+      <h1>Conversations</h1>
+      <button class="text-btn" id="logoutBtn" type="button">Sign Out</button>
+    </header>
+    <p class="me" id="meLine"></p>
+    <div id="queue"></div>
+  </aside>
+
+  <section class="detail" id="detail" aria-live="polite">
+    <div class="placeholder" id="placeholder">
+      <div class="hero-mark" aria-hidden="true"></div>
+      <p>Pick a conversation. People who need help most are at the top.</p>
+    </div>
+
+    <div class="convo" id="convo" hidden>
+      <header class="convo-head">
+        <button class="icon-btn back" id="backBtn" type="button" aria-label="Back to conversations">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <div class="convo-title">
+          <h2 id="convoTitle"></h2>
+          <p id="convoSub"></p>
+        </div>
+        <div class="convo-actions">
+          <button class="btn-small primary" id="acceptBtn" type="button" hidden>Accept</button>
+          <button class="btn-small destructive" id="closeBtn" type="button" hidden>End Chat</button>
+        </div>
+      </header>
+
+      <div class="convo-body">
+        <div class="convo-thread" id="convoThread"></div>
+        <aside class="info" id="info" aria-label="About this person">
+          <h3 class="group-label">Risk</h3>
+          <div class="info-card"><span class="risk" id="infoRisk"></span><p class="small" id="infoRiskNote"></p></div>
+          <h3 class="group-label">What they've shared</h3>
+          <div class="info-card" id="infoMap"></div>
+          <h3 class="group-label">Crisis lines</h3>
+          <div class="info-card small" id="infoLines"></div>
+        </aside>
+      </div>
+
+      <form class="composer" id="replyForm" autocomplete="off">
+        <div class="field">
+          <textarea id="replyInput" rows="1" placeholder="Reply as yourself" aria-label="Reply" maxlength="4000"></textarea>
+          <button class="send" id="replySend" type="submit" aria-label="Send" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg>
+          </button>
+        </div>
+        <p class="footnote" id="replyNote"></p>
+      </form>
+    </div>
+  </section>
+</div>
+
+<dialog class="alert" id="closeDialog" aria-labelledby="closeTitle">
+  <div class="alert-body">
+    <h2 id="closeTitle">End this chat?</h2>
+    <p>Solace will keep supporting them. Add a private note for other counsellors if it helps.</p>
+    <textarea id="closeNote" rows="3" maxlength="2000" placeholder="Note (optional)" aria-label="Note"></textarea>
+  </div>
+  <div class="alert-actions">
+    <button type="button" id="closeCancel">Cancel</button>
+    <button type="button" class="destructive" id="closeConfirm">End Chat</button>
+  </div>
+</dialog>
+
+<script src="/static/counsellor.js" defer></script>
+</body>
+</html>

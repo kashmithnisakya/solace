@@ -29,6 +29,12 @@
   </button>
 </header>
 
+<div class="handoff-bar" id="handoffBar" hidden>
+  <span class="dot" aria-hidden="true"></span>
+  <span class="handoff-text" id="handoffText" aria-live="polite"></span>
+  <button class="text-btn" id="handoffEnd" type="button">Cancel</button>
+</div>
+
 <main class="thread" id="thread" aria-live="polite" aria-label="Conversation"></main>
 
 <form class="composer" id="composer" autocomplete="off">
@@ -87,6 +93,11 @@
     <h3 class="group-label">Talk to someone now</h3>
     <ul class="list" id="supportList"></ul>
 
+    <h3 class="group-label">Talk to a person</h3>
+    <ul class="list">
+      <li><button class="row" id="settingsHandoff" type="button"><span class="grow">Chat with a Counsellor<small>A trained person joins this chat</small></span><span class="call">Ask</span></button></li>
+    </ul>
+
     <h3 class="group-label">Faith</h3>
     <ul class="list" id="faithList" role="radiogroup" aria-label="Include faith in conversations"></ul>
     <p class="group-note">If you choose a faith, Solace may gently draw on it when it helps. It will never preach.</p>
@@ -96,6 +107,21 @@
       <li><button class="row destructive" id="deleteBtn" type="button">Delete Conversation</button></li>
     </ul>
     <p class="group-note">Deletes your messages and your map from Solace. This can't be undone.</p>
+  </div>
+</dialog>
+
+<!-- Hand-off to a counsellor -->
+<dialog class="sheet" id="handoffSheet" aria-labelledby="handoffTitle">
+  <div class="sheet-body welcome">
+    <div class="hero-mark person" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg></div>
+    <h2 id="handoffTitle">Talk to a real person</h2>
+    <ul class="features">
+      <li><span class="f-icon f-talk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"/></svg></span><div><strong>A counsellor joins this chat</strong><p>A trained person will read this conversation and your map, so you don't have to start over.</p></div></li>
+      <li><span class="f-icon f-help" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span><div><strong>Solace stays with you</strong><p>Until they join, Solace keeps you company. You can cancel any time.</p></div></li>
+    </ul>
+    <p class="avail" id="handoffAvail" aria-live="polite"></p>
+    <button class="btn-primary" id="handoffConfirm" type="button">Ask for a Counsellor</button>
+    <button class="btn-plain" type="button" data-close>Not Now</button>
   </div>
 </dialog>
 

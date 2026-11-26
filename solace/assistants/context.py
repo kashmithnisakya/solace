@@ -20,6 +20,8 @@ class UserContext:
     knowledge: list[Passage] = field(default_factory=list)
     # True in voice calls: no citation markers in speech.
     spoken: bool = False
+    # True while the person is waiting for a human counsellor to join.
+    waiting_for_human: bool = False
 
     def resources_text(self) -> str:
         return "\n".join(f"- {r.name}: {r.contact} ({r.description})" for r in self.resources)

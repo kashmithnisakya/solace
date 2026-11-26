@@ -1,0 +1,103 @@
+/* Counsellor dashboard: a Mail/Messages-style split view on top of app.css tokens. */
+
+body.staff { display: block; height: 100dvh; overflow: hidden; }
+[hidden] { display: none !important; }
+
+/* Sign in */
+.login { height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+.login-card { width: min(100%, 380px); display: flex; flex-direction: column; align-items: center; text-align: center; }
+.login-card h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 18px 0 4px; }
+.login-card .caption { margin-bottom: 22px; }
+.list.inset { width: 100%; text-align: left; }
+.list.inset input {
+  width: 100%; border: 0; outline: 0; background: transparent; color: var(--label);
+  font: inherit; padding: 12px 16px; min-height: 44px;
+}
+.list.inset li + li { margin-left: 16px; }
+.list.inset li + li input { padding-left: 0; }
+.form-error { min-height: 1.4em; margin: 10px 0; font-size: 14px; color: var(--red); }
+
+/* Split view */
+.dash { height: 100%; display: grid; grid-template-columns: 340px 1fr; }
+.sidebar {
+  border-right: 0.5px solid var(--separator); background: var(--bg);
+  overflow-y: auto; padding: calc(env(safe-area-inset-top) + 8px) 12px 24px;
+}
+.side-head { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 4px 0; }
+.side-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.me { margin: 2px 4px 8px; font-size: 13px; color: var(--label-2); }
+.q-row {
+  width: 100%; display: grid; grid-template-columns: 12px 1fr auto; gap: 4px 10px; align-items: start;
+  padding: 10px 12px; text-align: left; color: var(--label); border-radius: 10px;
+}
+.q-row:hover { background: var(--fill); }
+.q-row[aria-current="true"] { background: var(--accent); color: #fff; }
+.q-row[aria-current="true"] .q-preview, .q-row[aria-current="true"] .q-time { color: rgba(255, 255, 255, 0.85); }
+.q-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--label-3); }
+.q-dot.moderate { background: var(--orange); }
+.q-dot.high, .q-dot.imminent { background: var(--red); }
+.q-name { font-weight: 600; font-size: 15px; display: flex; gap: 6px; align-items: center; }
+.q-time { font-size: 13px; color: var(--label-2); white-space: nowrap; }
+.q-preview {
+  grid-column: 2 / 4; font-size: 14px; color: var(--label-2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.badge { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: var(--red); color: #fff; letter-spacing: .02em; }
+.badge.mine { background: var(--green); }
+.empty-q { margin: 24px 8px; color: var(--label-2); font-size: 15px; text-align: center; }
+
+.detail { position: relative; height: 100%; overflow: hidden; background: var(--bg); }
+.placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--label-2); padding: 24px; text-align: center; }
+.convo { height: 100%; display: flex; flex-direction: column; }
+.convo-head {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 10px; background: var(--bar);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid var(--separator);
+}
+.convo-head .back { display: none; }
+.convo-head .back svg { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.convo-title h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.convo-title p { margin: 0; font-size: 13px; color: var(--label-2); }
+.convo-actions { display: flex; gap: 8px; }
+.btn-small { padding: 7px 14px; border-radius: 999px; font-size: 15px; font-weight: 600; background: var(--fill); color: var(--accent); }
+.btn-small.primary { background: var(--accent); color: #fff; }
+.btn-small.destructive { color: var(--red); }
+
+.convo-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 280px; }
+.convo-thread { overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; }
+/* From the counsellor's side: the person is on the left, Solace and you are on the right. */
+.convo-thread .bubble.person { align-self: flex-start; background: var(--them); color: var(--them-text); border-bottom-left-radius: 6px; }
+.convo-thread .bubble.ai { align-self: flex-end; background: var(--accent-soft); color: var(--label); border-bottom-right-radius: 6px; }
+.convo-thread .bubble.self { align-self: flex-end; background: var(--green); color: #fff; border-bottom-right-radius: 6px; }
+.convo-thread .who { font-size: 12px; color: var(--label-2); margin: 10px 10px -4px; }
+.convo-thread .who.right { align-self: flex-end; }
+.info { overflow-y: auto; padding: 0 16px 24px; border-left: 0.5px solid var(--separator); }
+.info .group-label { margin-left: 4px; }
+.info-card { background: var(--grouped); border-radius: 12px; padding: 12px 14px; }
+.small { font-size: 13px; color: var(--label-2); margin: 6px 0 0; }
+.risk { display: inline-block; font-weight: 700; font-size: 15px; text-transform: capitalize; }
+.risk.moderate { color: var(--orange); }
+.risk.high, .risk.imminent { color: var(--red); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.chip { font-size: 13px; padding: 3px 9px; border-radius: 999px; background: var(--fill); }
+.chip-type { font-size: 12px; color: var(--label-2); margin-top: 6px; }
+.line-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; color: var(--label); }
+.alert textarea {
+  width: 100%; margin-top: 12px; border-radius: 8px; border: 0.5px solid var(--separator);
+  background: var(--bg-elevated); color: var(--label); font: inherit; font-size: 14px; padding: 8px; resize: none;
+}
+
+@media (max-width: 1000px) {
+  .convo-body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .info { display: none; }
+}
+@media (max-width: 760px) {
+  .dash { grid-template-columns: 1fr; }
+  .dash.open .sidebar { display: none; }
+  .dash:not(.open) .detail { display: none; }
+  .convo-head .back { display: grid; }
+}
+
+/* The thread re-renders on live updates, so don't replay the appear animation each time. */
+.convo-thread .bubble { animation: none; }

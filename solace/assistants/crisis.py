@@ -2,6 +2,7 @@
 
 from agents import Agent, RunContextWrapper
 
+from solace.assistants.companion import human_sections
 from solace.assistants.context import UserContext
 
 INSTRUCTIONS = """\
@@ -31,7 +32,7 @@ Crisis lines:
 
 
 def crisis_instructions(ctx: RunContextWrapper[UserContext], agent: Agent) -> str:
-    return INSTRUCTIONS.format(resources=ctx.context.resources_text())
+    return INSTRUCTIONS.format(resources=ctx.context.resources_text()) + human_sections(ctx.context)
 
 
 def build_crisis_agent(model: str | None) -> Agent[UserContext]:

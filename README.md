@@ -17,6 +17,7 @@
 - **Builds a private map (issue graph)** of what the person is going through: issues, feelings, triggers, people and supports, and how they connect. It uses roles, never names.
 - **Asks gentle questions to fill gaps** (when it started, sleep, support, daily life and more). These are loosely guided by PHQ-9 / GAD-7, one at a time, never like a form, and never during a crisis.
 - **Draws on trusted knowledge, with sources.** A small library of notes on sleep, stress, anxiety, panic, low mood, grief, loneliness, anger, exam stress, self-harm urges and getting help (from WHO and NHS guidance), plus opt-in comfort from Buddhist, Hindu, Islamic and Christian teaching. Solace uses at most one idea at a time, in its own words, only when it helps, and shows tappable sources under the reply.
+- **Connects to a real person.** Anyone can ask for a counsellor from the crisis card or Settings. Only with their consent, a trained counsellor sees the conversation and map in a dashboard, joins the same chat live, and Solace steps back. Risk is still screened on every message, urgent chats rise to the top, and every look at a conversation is audit-logged.
 - **Lets the person delete everything** with one button.
 - **Includes faith only if the person chooses it** (Buddhism, Hinduism, Islam, Christianity, or none).
 - Never diagnoses, and never gives medication advice.
@@ -54,6 +55,9 @@ With Docker: `docker compose up --build`.
 | `GET` | `/api/sessions/{id}/graph` | The person's issue graph, coverage, and next area to explore |
 | `DELETE` | `/api/sessions/{id}` | Delete the conversation, graph and risk state |
 | `GET` | `/api/resources` | Crisis lines for the configured region |
+| `POST` | `/api/sessions/{id}/handoff` | Ask for a counsellor (`{"consent": true}` required); `GET` for status, `DELETE` to cancel or end |
+| `GET` | `/api/sessions/{id}/live` | Server-sent events: counsellor joined, messages, chat ended |
+| `GET` | `/counsellor` | Counsellor dashboard (sign-in required); its API lives under `/api/counsellor/` |
 | `POST` | `/api/voice/session` | Start a voice call: returns a short-lived key for the browser's WebRTC connection |
 | `POST` | `/api/voice/turn` | Save a finished transcript; user speech is risk-screened and returns the instructions to use next |
 | `GET` | `/health` | Health check |
@@ -86,6 +90,7 @@ solace/
 ├── api.py              FastAPI app
 ├── conversation.py     safety-first routing between agents (text and voice)
 ├── voice.py            Realtime voice: short-lived keys and spoken instructions
+├── platform/           counsellor accounts, consented hand-off, live updates, dashboard API
 ├── knowledge/          knowledge base search and citations; library/ holds the notes (Markdown)
 ├── assessment.py       picks the next area worth gently asking about
 ├── graph/              issue graph models and storage
@@ -95,6 +100,20 @@ solace/
 └── web/                Apple-style web app (index.html, static/app.css, static/app.js)
 tests/                  unit tests, including crisis-phrase test cases
 ```
+
+## Counsellors
+
+People never need an account. Counsellors do, created from the command line:
+
+```bash
+uv run python -m solace.platform add-counsellor --email nimal@example.org --name "Nimal"
+uv run python -m solace.platform list
+uv run python -m solace.platform disable --email nimal@example.org
+```
+
+They sign in at `/counsellor`. A counsellor counts as online while the dashboard is open. Login cookies are
+HTTPS-only; for local development over plain HTTP in Safari, set `SOLACE_SECURE_COOKIES=false`.
+Live updates run in-process, so run a single worker (or swap the broker for Redis pub/sub before scaling out).
 
 ## Adding knowledge
 
@@ -117,7 +136,7 @@ Knowledge content needs the same professional review as prompts.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a platform with human counselors, and Sinhala support.
+See [docs/ROADMAP.md](docs/ROADMAP.md). Next up: a safety evaluation suite, then Sinhala support.
 
 ## Development
 
