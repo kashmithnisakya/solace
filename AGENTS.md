@@ -9,7 +9,7 @@ in crisis, so **safety comes before features**. Read [SAFETY.md](SAFETY.md) befo
 `solace/safety/`, `solace/assistants/`, or `solace/conversation.py`.
 
 - Language: Python 3.12+, managed with [uv](https://docs.astral.sh/uv/)
-- Web: FastAPI (`solace/api.py`) and a static page (`solace/web/index.html`)
+- Web: FastAPI (`solace/api.py`) and a static Apple-style web app (`solace/web/`: `index.html`, `static/app.css`, `static/app.js`)
 - Agents: OpenAI Agents SDK (`agents` package); key from `OPENAI_API_KEY` in `.env`
 - Storage: SQLite (conversation history and issue graph)
 
@@ -34,7 +34,7 @@ solace/
 ├── assistants/          agent definitions and prompts (companion, crisis, classifier, graph_builder)
 ├── graph/               issue graph models and SQLite store
 ├── safety/              keyword screen, risk levels, crisis lines
-└── web/                 chat page
+└── web/                 web app; no inline scripts or styles (the CSP blocks them)
 tests/                   pytest suite; conftest.py has fakes for every LLM call
 docs/ROADMAP.md          phases and status
 ```
@@ -57,6 +57,14 @@ docs/ROADMAP.md          phases and status
 - Agent output models must have all fields required (strict JSON schema).
 - Line length 110; ruff decides formatting.
 - Comments explain *why*, not *what*.
+
+## UI conventions
+
+- Follow Apple's Human Interface Guidelines: system font, 17px body, iOS system colours via CSS variables,
+  translucent bars, sheets for secondary screens, 44px minimum touch targets.
+- Every colour is a token in `:root` with a dark-mode value. Respect `prefers-reduced-motion`.
+- Keep JS and CSS in `solace/web/static/`. Inline `<script>`/`<style>` and `style="…"` attributes are blocked by the CSP.
+- Render model text with `textContent`, never `innerHTML`.
 
 ## Privacy
 
