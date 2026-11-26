@@ -4,8 +4,8 @@
 |---|---|---|
 | 0. Setup | Repo, license, structure, CI, Docker | ✅ Done |
 | 1. Text MVP | Companion agent, risk screening, crisis mode, chat page | ✅ First version |
-| 2. Assessment + issue graph | Gentle question flow (loosely guided by PHQ-9 / GAD-7); extract issues, emotions, triggers and supports into a graph; graph view | Next |
-| 3. Knowledge base (RAG) | Psychology (e.g. WHO mhGAP, self-help guides), opt-in faith sources (Buddhism, Hinduism, Islam, Christianity), general health info; citations on every answer | Planned |
+| 2. Assessment + issue graph | Gentle question flow (loosely guided by PHQ-9 / GAD-7); extract issues, emotions, triggers and supports into a graph; graph view | ✅ First version |
+| 3. Knowledge base (RAG) | Psychology (e.g. WHO mhGAP, self-help guides), opt-in faith sources (Buddhism, Hinduism, Islam, Christianity), general health info; citations on every answer | Next |
 | 4. Real-time voice | OpenAI Realtime API over WebRTC, with the same safety screening | Planned |
 | 5. Platform | Accounts, history, consent and data deletion, counselor dashboard, human hand-off | Planned |
 | 6. Safety evaluation | Red-team suite, professional review, monitoring | Ongoing |
